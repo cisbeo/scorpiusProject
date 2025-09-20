@@ -1,50 +1,56 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+Version change: new → 1.0.0
+Project: ScorpiusProject - French Public Procurement Document Analysis Backend
+Added sections: All sections (new constitution)
+Templates requiring updates: ✅ plan-template.md, ✅ spec-template.md, ✅ tasks-template.md compatible
+Follow-up TODOs: None
+-->
+
+# ScorpiusProject Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Data Pipeline Integrity
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Document ingestion and processing pipelines MUST be idempotent and recoverable. Every document processing stage MUST log structured metadata (document_id, stage, timestamp, status). Failed documents MUST be retryable without data corruption. Pipeline state MUST be externally observable through health endpoints.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. NLP Model Reproducibility
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+All NLP models and embeddings MUST use pinned versions and deterministic processing. Model inference MUST include confidence scores and processing metadata. Vector embeddings MUST be versioned and migrations MUST be backward compatible. No production model changes without A/B testing validation.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+Rationale: AI-generated procurement responses must be consistent, traceable, and legally defensible.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### III. API-First Architecture
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+Every service functionality MUST be exposed via FastAPI REST endpoints with OpenAPI documentation. All endpoints MUST implement standardized error responses, request validation, and structured logging. Internal service communication MUST use the same API contracts as external clients.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Rationale: Enables integration testing, client SDK generation, and service modularity for complex document workflows.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### IV. Knowledge Base Consistency
+
+RAG knowledge base updates MUST be atomic operations with rollback capability. Vector search results MUST include source document provenance and retrieval confidence. Knowledge updates MUST not affect in-flight document processing. Vector index state MUST be externally verifiable.
+
+Rationale: Procurement response quality depends on consistent, auditable knowledge retrieval across document processing sessions.
+
+## Performance Standards
+
+Python services MUST handle 1000+ concurrent document uploads with <5s p95 processing latency. Vector searches MUST return results within 200ms p95. Memory usage MUST not exceed 8GB per service instance under normal load. All databases MUST use connection pooling and prepared statements.
+
+Rationale: Real-time procurement deadline requirements demand predictable performance characteristics.
+
+## Development Workflow
+
+TDD is mandatory: write failing tests, implement to pass, refactor. All PRs MUST include integration tests for new endpoints. Database migrations MUST be tested with production-scale data volumes. Pre-commit hooks MUST run linting (ruff), type checking (mypy), and security scanning (bandit).
+
+Code reviews MUST verify: API contract compatibility, vector embedding versioning impact, data pipeline idempotency, and security controls implementation.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices. Constitutional violations require explicit justification and technical debt documentation.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+All PRs MUST verify constitutional compliance through automated checks. Complexity additions MUST demonstrate clear business value and simpler alternatives consideration.
+
+Amendment procedure: propose changes via issue, achieve consensus, update all dependent templates, increment version following semantic versioning.
+
+**Version**: 1.0.0 | **Ratified**: 2025-09-20 | **Last Amended**: 2025-09-20

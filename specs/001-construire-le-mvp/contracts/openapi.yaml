@@ -1,0 +1,924 @@
+openapi: 3.0.3
+info:
+  title: ScorpiusProject MVP API
+  description: French Public Procurement Bid Manager Backend API
+  version: 1.0.0
+  contact:
+    email: support@scorpiusproject.fr
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Development server
+  - url: https://api.scorpiusproject.fr/api/v1
+    description: Production server
+
+paths:
+  /auth/register:
+    post:
+      summary: Register new user
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+      responses:
+        201:
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        409:
+          $ref: '#/components/responses/Conflict'
+
+  /auth/login:
+    post:
+      summary: Login user
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        200:
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        200:
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /documents:
+    post:
+      summary: Upload procurement document
+      tags: [Documents]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF file (max 50MB)
+      responses:
+        201:
+          description: Document uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        413:
+          description: File too large
+
+    get:
+      summary: List procurement documents
+      tags: [Documents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [uploaded, processing, processed, failed]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        200:
+          description: Documents list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentList'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /documents/{document_id}:
+    get:
+      summary: Get document details
+      tags: [Documents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        200:
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDetailResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /documents/{document_id}/process:
+    post:
+      summary: Start document processing
+      tags: [Documents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        202:
+          description: Processing started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingStatus'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /documents/{document_id}/requirements:
+    get:
+      summary: Get extracted requirements
+      tags: [Documents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        200:
+          description: Extracted requirements
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtractedRequirements'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /company-profile:
+    get:
+      summary: Get company profile
+      tags: [Company]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Company profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProfile'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update company profile
+      tags: [Company]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyProfileUpdate'
+      responses:
+        200:
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProfile'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /analysis/match:
+    post:
+      summary: Analyze capability matching
+      tags: [Analysis]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [document_id]
+              properties:
+                document_id:
+                  type: string
+                  format: uuid
+      responses:
+        201:
+          description: Analysis completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityMatch'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /bid-responses:
+    post:
+      summary: Generate bid response
+      tags: [Bid Response]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateBidRequest'
+      responses:
+        201:
+          description: Bid response generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BidResponse'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      summary: List bid responses
+      tags: [Bid Response]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, reviewing, final]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        200:
+          description: Bid responses list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BidResponseList'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /bid-responses/{bid_id}:
+    get:
+      summary: Get bid response details
+      tags: [Bid Response]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BidId'
+      responses:
+        200:
+          description: Bid response details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BidResponseDetail'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update bid response
+      tags: [Bid Response]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BidId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BidResponseUpdate'
+      responses:
+        200:
+          description: Bid response updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BidResponse'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /bid-responses/{bid_id}/compliance:
+    post:
+      summary: Run compliance check
+      tags: [Bid Response]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BidId'
+      responses:
+        200:
+          description: Compliance check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceResult'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /bid-responses/{bid_id}/download:
+    get:
+      summary: Download bid response
+      tags: [Bid Response]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BidId'
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [pdf, docx]
+            default: pdf
+      responses:
+        200:
+          description: File download
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /health:
+    get:
+      summary: Health check
+      tags: [System]
+      responses:
+        200:
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    DocumentId:
+      name: document_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    BidId:
+      name: bid_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    UserRegistration:
+      type: object
+      required: [email, password, full_name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        full_name:
+          type: string
+        role:
+          type: string
+          enum: [bid_manager, admin]
+          default: bid_manager
+
+    UserResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            email:
+              type: string
+            full_name:
+              type: string
+            role:
+              type: string
+            created_at:
+              type: string
+              format: date-time
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    TokenResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            access_token:
+              type: string
+            refresh_token:
+              type: string
+            token_type:
+              type: string
+              default: Bearer
+            expires_in:
+              type: integer
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    DocumentResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            original_filename:
+              type: string
+            file_size:
+              type: integer
+            status:
+              type: string
+            created_at:
+              type: string
+              format: date-time
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    DocumentList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentSummary'
+        meta:
+          allOf:
+            - $ref: '#/components/schemas/ResponseMeta'
+            - $ref: '#/components/schemas/PaginationMeta'
+
+    DocumentSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        original_filename:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    DocumentDetailResponse:
+      type: object
+      properties:
+        data:
+          allOf:
+            - $ref: '#/components/schemas/DocumentSummary'
+            - type: object
+              properties:
+                file_size:
+                  type: integer
+                processing_completed_at:
+                  type: string
+                  format: date-time
+                processing_duration_ms:
+                  type: integer
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    ProcessingStatus:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            document_id:
+              type: string
+              format: uuid
+            status:
+              type: string
+            message:
+              type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    ExtractedRequirements:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            document_id:
+              type: string
+              format: uuid
+            title:
+              type: string
+            reference_number:
+              type: string
+            buyer_organization:
+              type: string
+            submission_deadline:
+              type: string
+              format: date-time
+            budget:
+              type: object
+              properties:
+                min:
+                  type: number
+                max:
+                  type: number
+            requirements:
+              type: object
+            evaluation_criteria:
+              type: object
+            extraction_confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    CompanyProfile:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            company_name:
+              type: string
+            siret:
+              type: string
+            description:
+              type: string
+            capabilities:
+              type: array
+              items:
+                type: object
+            certifications:
+              type: array
+              items:
+                type: object
+            team_size:
+              type: integer
+            annual_revenue:
+              type: number
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    CompanyProfileUpdate:
+      type: object
+      properties:
+        company_name:
+          type: string
+        description:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: object
+        certifications:
+          type: array
+          items:
+            type: object
+        team_size:
+          type: integer
+        annual_revenue:
+          type: number
+
+    CapabilityMatch:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            overall_score:
+              type: number
+              minimum: 0
+              maximum: 100
+            technical_score:
+              type: number
+            functional_score:
+              type: number
+            gaps:
+              type: array
+              items:
+                type: string
+            strengths:
+              type: array
+              items:
+                type: string
+            recommendation:
+              type: string
+              enum: [go, no_go, review_needed]
+            confidence_level:
+              type: number
+              minimum: 0
+              maximum: 1
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    GenerateBidRequest:
+      type: object
+      required: [document_id]
+      properties:
+        document_id:
+          type: string
+          format: uuid
+        response_type:
+          type: string
+          enum: [technical, commercial, complete]
+          default: complete
+
+    BidResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            title:
+              type: string
+            response_type:
+              type: string
+            status:
+              type: string
+            compliance_score:
+              type: number
+            created_at:
+              type: string
+              format: date-time
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    BidResponseList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BidResponse'
+        meta:
+          allOf:
+            - $ref: '#/components/schemas/ResponseMeta'
+            - $ref: '#/components/schemas/PaginationMeta'
+
+    BidResponseDetail:
+      type: object
+      properties:
+        data:
+          allOf:
+            - $ref: '#/components/schemas/BidResponse'
+            - type: object
+              properties:
+                content:
+                  type: object
+                compliance_issues:
+                  type: array
+                  items:
+                    type: object
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    BidResponseUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [draft, reviewing, final]
+        content:
+          type: object
+
+    ComplianceResult:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            bid_id:
+              type: string
+              format: uuid
+            overall_score:
+              type: number
+            checks:
+              type: array
+              items:
+                type: object
+                properties:
+                  category:
+                    type: string
+                  rule:
+                    type: string
+                  status:
+                    type: string
+                    enum: [passed, failed, warning]
+                  message:
+                    type: string
+                  severity:
+                    type: string
+                    enum: [critical, major, minor]
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        version:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        services:
+          type: object
+          additionalProperties:
+            type: string
+
+    ResponseMeta:
+      type: object
+      properties:
+        version:
+          type: string
+          default: "1.0.0"
+        processing_time:
+          type: integer
+          description: Processing time in milliseconds
+
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              message:
+                type: string
+              field:
+                type: string
+                nullable: true
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
