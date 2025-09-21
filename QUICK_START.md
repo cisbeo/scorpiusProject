@@ -57,16 +57,28 @@ nano .env.prod
 #### 3. Configuration SSL (Let's Encrypt)
 
 ```bash
-# Installation Certbot
+# ÉTAPE 1: Configurer le firewall
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+
+# ÉTAPE 2: Arrêter services conflictuels
+sudo systemctl stop nginx apache2 2>/dev/null || true
+
+# ÉTAPE 3: Installation Certbot
 sudo snap install --classic certbot
 
-# Génération certificats
-sudo certbot certonly --standalone -d votre-domaine.fr
+# ÉTAPE 4: Génération certificats (remplacer par votre domaine)
+sudo certbot certonly --standalone -d scorpius.bbmiss.co
 
-# Copie des certificats
-sudo cp /etc/letsencrypt/live/votre-domaine.fr/fullchain.pem nginx/ssl/cert.pem
-sudo cp /etc/letsencrypt/live/votre-domaine.fr/privkey.pem nginx/ssl/key.pem
+# ÉTAPE 5: Copie des certificats
+sudo cp /etc/letsencrypt/live/scorpius.bbmiss.co/fullchain.pem nginx/ssl/cert.pem
+sudo cp /etc/letsencrypt/live/scorpius.bbmiss.co/privkey.pem nginx/ssl/key.pem
 sudo chown scorpius:scorpius nginx/ssl/*
+
+# ALTERNATIVE si problème firewall: utiliser webroot
+# sudo mkdir -p /var/www/html/.well-known/acme-challenge
+# sudo certbot certonly --webroot -w /var/www/html -d scorpius.bbmiss.co
 ```
 
 #### 4. Démarrage des services
@@ -79,7 +91,20 @@ sudo chown scorpius:scorpius nginx/ssl/*
 ./deploy.sh status
 ```
 
-#### 5. Test de l'installation
+#### 5. Initialisation de la base de données
+
+```bash
+# IMPORTANT: Initialiser les tables de la base de données
+./deploy.sh init-db
+
+# OU manuellement :
+docker-compose -f docker-compose.prod.yml exec api python /app/scripts/init_db.py
+
+# Vérifier que les tables sont créées
+docker-compose -f docker-compose.prod.yml exec postgres psql -U scorpius -d scorpius_prod -c "\dt"
+```
+
+#### 6. Test de l'installation
 
 ```bash
 # Test API
@@ -197,6 +222,21 @@ sudo crontab -e
 
 ## 🚨 Dépannage Rapide
 
+### Tables de base de données manquantes
+
+```bash
+# Symptôme: "Registration failed due to internal error"
+# Solution: Initialiser les tables
+
+# Vérifier si les tables existent
+docker-compose -f docker-compose.prod.yml exec postgres psql -U scorpius -d scorpius_prod -c "\dt"
+
+# Si aucune table, exécuter l'initialisation
+docker-compose -f docker-compose.prod.yml exec api python /app/scripts/init_db.py
+
+# Devrait afficher: "✅ Created 9 tables"
+```
+
 ### Services ne démarrent pas
 
 ```bash
@@ -216,6 +256,16 @@ docker-compose -f docker-compose.prod.yml restart api
 ```bash
 # Restaurer depuis backup
 ./deploy.sh restore backups/backup_20241201_120000.sql
+```
+
+### Redis authentication errors
+
+```bash
+# Si erreur "WRONGPASS invalid username-password pair"
+# Le Redis est configuré sans mot de passe en production
+# Vérifier dans docker-compose.prod.yml que Redis n'a pas de REDIS_PASSWORD
+docker-compose -f docker-compose.prod.yml exec redis redis-cli ping
+# Doit retourner: PONG
 ```
 
 ### Problème de performance

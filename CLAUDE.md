@@ -62,6 +62,67 @@ mypy src             # Type checking
 bandit -r src        # Security
 ```
 
+## Production Server Access
+
+### SSH Connection
+```bash
+ssh -i ~/.ssh/scorpiusProjectPrivateKey.txt ubuntu@83.228.208.162
+```
+
+### Server Details
+- **Host**: scorpius.bbmiss.co (IP: 83.228.208.162)
+- **User**: ubuntu (puis sudo -u scorpius pour les opérations)
+- **Project Path**: /home/scorpius/scorpiusProject
+- **Provider**: Infomaniak
+
+### Common Production Commands
+```bash
+# Se connecter au serveur
+ssh -i ~/.ssh/scorpiusProjectPrivateKey.txt ubuntu@83.228.208.162
+
+# Changer vers l'utilisateur scorpius pour les opérations Docker
+sudo -u scorpius bash -c 'cd /home/scorpius/scorpiusProject && [COMMAND]'
+
+# Voir les logs de l'API
+sudo -u scorpius bash -c 'cd /home/scorpius/scorpiusProject && docker-compose -f docker-compose.prod.yml logs -f api'
+
+# Redémarrer les services
+sudo -u scorpius bash -c 'cd /home/scorpius/scorpiusProject && docker-compose -f docker-compose.prod.yml restart api'
+
+# Exécuter des commandes dans le conteneur API
+sudo -u scorpius bash -c 'cd /home/scorpius/scorpiusProject && docker-compose -f docker-compose.prod.yml exec -T api [COMMAND]'
+
+# Initialiser/réinitialiser la base de données
+sudo -u scorpius bash -c 'cd /home/scorpius/scorpiusProject && docker-compose -f docker-compose.prod.yml exec -T api python /app/scripts/init_db.py'
+
+# Vérifier les tables PostgreSQL
+sudo -u scorpius bash -c 'cd /home/scorpius/scorpiusProject && docker-compose -f docker-compose.prod.yml exec -T postgres psql -U scorpius -d scorpius_prod -c "\\dt"'
+```
+
+### File Transfer to Production
+```bash
+# Copier un fichier vers le serveur (zone temporaire)
+scp -i ~/.ssh/scorpiusProjectPrivateKey.txt [LOCAL_FILE] ubuntu@83.228.208.162:/tmp/
+
+# Puis déplacer vers le bon emplacement avec les bonnes permissions
+ssh -i ~/.ssh/scorpiusProjectPrivateKey.txt ubuntu@83.228.208.162 "sudo mv /tmp/[FILE] /home/scorpius/scorpiusProject/[PATH] && sudo chown scorpius:scorpius /home/scorpius/scorpiusProject/[PATH]"
+```
+
+### Docker Compose Operations
+```bash
+# Arrêter tous les services
+sudo -u scorpius bash -c 'cd /home/scorpius/scorpiusProject && docker-compose -f docker-compose.prod.yml down'
+
+# Démarrer tous les services
+sudo -u scorpius bash -c 'cd /home/scorpius/scorpiusProject && docker-compose -f docker-compose.prod.yml up -d'
+
+# Recréer un service spécifique (ex: API)
+sudo -u scorpius bash -c 'cd /home/scorpius/scorpiusProject && docker-compose -f docker-compose.prod.yml down api && docker-compose -f docker-compose.prod.yml up -d api'
+
+# Voir le statut des conteneurs
+sudo -u scorpius bash -c 'cd /home/scorpius/scorpiusProject && docker-compose -f docker-compose.prod.yml ps'
+```
+
 ## Common Tasks
 
 ### Add New Endpoint

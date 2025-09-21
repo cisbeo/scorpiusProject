@@ -274,21 +274,38 @@ init_database() {
     # Wait for database to be ready
     sleep 10
 
-    # Create tables
-    docker-compose -f $COMPOSE_FILE exec api python -c "
-import asyncio
-from src.db.session import async_engine
-from src.db.base import Base
+    # Check if tables already exist
+    TABLES=$(docker-compose -f $COMPOSE_FILE exec -T postgres psql -U scorpius -d scorpius_prod -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'")
 
-async def init_db():
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print('✓ Database tables created')
+    if [ "$TABLES" -gt 0 ]; then
+        warning "Database already has tables. Use 'reinit-db' to force recreation."
+        return
+    fi
 
-asyncio.run(init_db())
-"
+    # Create tables using the init_db.py script
+    docker-compose -f $COMPOSE_FILE exec -T api python /app/scripts/init_db.py
 
     log "Database initialized successfully"
+}
+
+# Reinitialize database (drops and recreates all tables)
+reinit_database() {
+    log "Re-initializing database (this will DROP all existing tables)..."
+
+    read -p "⚠️  WARNING: This will DELETE all data. Are you sure? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        info "Operation cancelled"
+        exit 0
+    fi
+
+    # Drop all tables
+    docker-compose -f $COMPOSE_FILE exec -T postgres psql -U scorpius -d scorpius_prod -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+    # Create tables using the init_db.py script
+    docker-compose -f $COMPOSE_FILE exec -T api python /app/scripts/init_db.py
+
+    log "Database re-initialized successfully"
 }
 
 # Update application
@@ -361,20 +378,28 @@ case "${1:-}" in
     health)
         check_health
         ;;
+    init-db)
+        init_database
+        ;;
+    reinit-db)
+        reinit_database
+        ;;
     *)
         echo "Scorpius Project - Production Deployment Script"
         echo
-        echo "Usage: $0 {init|start|stop|restart|logs|backup|restore|update|status|health}"
+        echo "Usage: $0 {init|start|stop|restart|logs|backup|restore|update|status|health|init-db|reinit-db}"
         echo
         echo "Commands:"
-        echo "  init     - Initialize project (generate secrets, setup directories)"
-        echo "  start    - Build and start all services"
-        echo "  stop     - Stop all services"
-        echo "  restart  - Restart all services"
-        echo "  logs     - Show service logs (logs [service])"
-        echo "  backup   - Create database backup"
-        echo "  restore  - Restore database from backup (restore <file>)"
-        echo "  update   - Update application from git and restart"
+        echo "  init       - Initialize project (generate secrets, setup directories)"
+        echo "  start      - Build and start all services"
+        echo "  stop       - Stop all services"
+        echo "  restart    - Restart all services"
+        echo "  logs       - Show service logs (logs [service])"
+        echo "  backup     - Create database backup"
+        echo "  restore    - Restore database from backup (restore <file>)"
+        echo "  update     - Update application from git and restart"
+        echo "  init-db    - Initialize database tables (safe, skips if tables exist)"
+        echo "  reinit-db  - Re-initialize database (WARNING: drops all tables)"
         echo "  status   - Show system status"
         echo "  health   - Check service health"
         echo

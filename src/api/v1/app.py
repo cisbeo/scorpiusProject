@@ -26,9 +26,7 @@ async def lifespan(app: FastAPI):
 
     # Setup logging
     setup_logging(
-        level=settings.log_level,
-        app_name=settings.app_name,
-        environment=settings.app_env
+        log_level=settings.log_level
     )
 
     # Initialize database (if needed)
@@ -121,7 +119,7 @@ def create_application() -> FastAPI:
     if settings.is_production:
         app.add_middleware(
             TrustedHostMiddleware,
-            allowed_hosts=["*.scorpiusproject.fr", "scorpiusproject.fr"]
+            allowed_hosts=["*"]  # Allow all hosts in production for flexibility
         )
 
     # CORS middleware
