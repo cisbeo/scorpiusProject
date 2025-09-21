@@ -179,3 +179,57 @@ alembic upgrade head
 - Added evolutionary architecture design
 - Implemented plugin system for processors
 - Prepared vector database support
+- Deployed MVP to production (scorpius.bbmiss.co)
+- Added GET /me endpoint for user profile
+- Fixed PyJWT dependency issue in production
+
+## Current Status (2025-09-21)
+
+### ✅ Working
+- Production deployment on https://scorpius.bbmiss.co
+- PostgreSQL database with 9 tables initialized
+- Redis cache service
+- Nginx with SSL/HTTPS
+- User registration (POST /auth/register)
+- User login (POST /auth/login)
+- Token refresh (POST /auth/refresh)
+- Health check endpoint
+
+### 🔴 Issues to Fix
+1. **Authentication Middleware Problem**
+   - GET /me returns "Authentication required" even with valid token
+   - All protected endpoints (company profile, documents) fail authentication
+   - Issue: `get_current_user` dependency not properly validating JWT tokens
+   - Location: src/middleware/auth.py
+
+2. **Test Coverage**
+   - Document upload/processing not tested
+   - Company profile CRUD not tested
+   - Capability matching analysis not tested
+
+## Next Session Tasks
+
+### Priority 1: Fix Authentication
+1. Debug `get_current_user` middleware in src/middleware/auth.py
+2. Check JWT token validation logic
+3. Verify HTTPBearer authentication flow
+4. Test with different token formats/headers
+
+### Priority 2: Complete Testing
+1. Fix and test GET /me endpoint
+2. Test document upload endpoint (POST /documents)
+3. Test company profile endpoints (CRUD)
+4. Test capability matching analysis
+5. Verify file processing pipeline
+
+### Priority 3: Production Improvements
+1. Set up monitoring (logs aggregation)
+2. Configure automated backups
+3. Implement rate limiting
+4. Add health metrics endpoint
+5. Set up CI/CD pipeline
+
+## Known Working Test User
+- Email: test-production@scorpius.fr
+- Password: TestProd2024!
+- Created in production database
