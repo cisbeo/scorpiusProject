@@ -1,7 +1,7 @@
 """Company profile model."""
 
 from decimal import Decimal
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -91,14 +91,14 @@ class CompanyProfile(BaseModel):
     )
 
     # Relationships
-    capability_matches: Mapped[List["CapabilityMatch"]] = relationship(
+    capability_matches: Mapped[list["CapabilityMatch"]] = relationship(
         "CapabilityMatch",
         back_populates="company_profile",
         cascade="all, delete-orphan",
         lazy="select",
     )
 
-    bid_responses: Mapped[List["BidResponse"]] = relationship(
+    bid_responses: Mapped[list["BidResponse"]] = relationship(
         "BidResponse",
         back_populates="company_profile",
         cascade="all, delete-orphan",

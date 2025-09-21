@@ -1,7 +1,7 @@
 """Database session configuration and management."""
 
+from collections.abc import AsyncGenerator, Generator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import (
@@ -16,25 +16,38 @@ from src.core.config import get_settings
 
 settings = get_settings()
 
-# Synchronous engine for migrations and CLI tools
-sync_engine = create_engine(
-    settings.get_database_url(async_mode=False),
-    poolclass=QueuePool,
-    pool_size=settings.database_pool_size,
-    max_overflow=settings.database_max_overflow,
-    pool_timeout=settings.database_pool_timeout,
-    echo=settings.debug,
-)
+# Determine if we're using SQLite for testing
+database_url = settings.get_database_url(async_mode=False)
+is_sqlite = str(database_url).startswith("sqlite")
 
-# Asynchronous engine for API
-async_engine = create_async_engine(
-    settings.get_database_url(async_mode=True),
-    poolclass=QueuePool,
-    pool_size=settings.database_pool_size,
-    max_overflow=settings.database_max_overflow,
-    pool_timeout=settings.database_pool_timeout,
-    echo=settings.debug,
-)
+# Configure engines based on database type
+if is_sqlite:
+    # SQLite configuration (for testing)
+    sync_engine = create_engine(
+        database_url,
+        poolclass=NullPool,
+        echo=settings.debug,
+    )
+    async_engine = create_async_engine(
+        settings.get_database_url(async_mode=True),
+        poolclass=NullPool,
+        echo=settings.debug,
+    )
+else:
+    # PostgreSQL configuration (for production)
+    sync_engine = create_engine(
+        database_url,
+        poolclass=QueuePool,
+        pool_size=settings.database_pool_size,
+        max_overflow=settings.database_max_overflow,
+        pool_timeout=settings.database_pool_timeout,
+        echo=settings.debug,
+    )
+    async_engine = create_async_engine(
+        settings.get_database_url(async_mode=True),
+        poolclass=NullPool,
+        echo=settings.debug,
+    )
 
 # Session factories
 SyncSessionLocal = sessionmaker(
@@ -137,10 +150,7 @@ class DatabaseSessionManager:
         """Initialize the database connection."""
         self._engine = create_async_engine(
             settings.get_database_url(async_mode=True),
-            poolclass=QueuePool,
-            pool_size=settings.database_pool_size,
-            max_overflow=settings.database_max_overflow,
-            pool_timeout=settings.database_pool_timeout,
+            poolclass=NullPool,
             echo=settings.debug,
         )
         self._sessionmaker = async_sessionmaker(

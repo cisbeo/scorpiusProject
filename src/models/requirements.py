@@ -2,10 +2,10 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import JSON, ForeignKey, Float, Numeric, String, Text
+from sqlalchemy import JSON, Float, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -106,7 +106,7 @@ class ExtractedRequirements(BaseModel):
         lazy="select",
     )
 
-    capability_matches: Mapped[List["CapabilityMatch"]] = relationship(
+    capability_matches: Mapped[list["CapabilityMatch"]] = relationship(
         "CapabilityMatch",
         back_populates="extracted_requirements",
         cascade="all, delete-orphan",

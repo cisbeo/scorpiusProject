@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
 from sqlalchemy import ForeignKey, Integer, String, Text
@@ -112,14 +112,14 @@ class ProcurementDocument(BaseModel):
         lazy="select",
     )
 
-    bid_responses: Mapped[List["BidResponse"]] = relationship(
+    bid_responses: Mapped[list["BidResponse"]] = relationship(
         "BidResponse",
         back_populates="procurement_document",
         cascade="all, delete-orphan",
         lazy="select",
     )
 
-    processing_events: Mapped[List["ProcessingEvent"]] = relationship(
+    processing_events: Mapped[list["ProcessingEvent"]] = relationship(
         "ProcessingEvent",
         back_populates="document",
         cascade="all, delete-orphan",

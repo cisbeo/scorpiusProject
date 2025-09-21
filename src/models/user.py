@@ -1,9 +1,10 @@
 """User model for authentication and authorization."""
 
 from enum import Enum
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Enum as SQLEnum, String
+from sqlalchemy import Boolean, String
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import BaseModel
@@ -54,14 +55,14 @@ class User(BaseModel):
     )
 
     # Relationships
-    procurement_documents: Mapped[List["ProcurementDocument"]] = relationship(
+    procurement_documents: Mapped[list["ProcurementDocument"]] = relationship(
         "ProcurementDocument",
         back_populates="uploaded_by_user",
         cascade="all, delete-orphan",
         lazy="select",
     )
 
-    bid_responses_created: Mapped[List["BidResponse"]] = relationship(
+    bid_responses_created: Mapped[list["BidResponse"]] = relationship(
         "BidResponse",
         foreign_keys="BidResponse.created_by",
         back_populates="creator",
@@ -69,7 +70,7 @@ class User(BaseModel):
         lazy="select",
     )
 
-    bid_responses_reviewed: Mapped[List["BidResponse"]] = relationship(
+    bid_responses_reviewed: Mapped[list["BidResponse"]] = relationship(
         "BidResponse",
         foreign_keys="BidResponse.reviewed_by",
         back_populates="reviewer",
@@ -77,7 +78,7 @@ class User(BaseModel):
         lazy="select",
     )
 
-    audit_logs: Mapped[List["AuditLog"]] = relationship(
+    audit_logs: Mapped[list["AuditLog"]] = relationship(
         "AuditLog",
         back_populates="user",
         cascade="all, delete-orphan",

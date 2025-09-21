@@ -3,7 +3,7 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import structlog
 from structlog.contextvars import merge_contextvars
@@ -117,7 +117,7 @@ class LogContext:
             structlog.contextvars.unbind_contextvars()
 
 
-def log_request(request_id: str, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
+def log_request(request_id: str, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
     """
     Create a standardized request log entry.
 
@@ -141,7 +141,7 @@ def log_request(request_id: str, method: str, path: str, **kwargs: Any) -> Dict[
 
 def log_response(
     request_id: str, status_code: int, duration_ms: float, **kwargs: Any
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Create a standardized response log entry.
 
@@ -165,7 +165,7 @@ def log_response(
 
 def log_error(
     request_id: str, error: Exception, context: str, **kwargs: Any
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Create a standardized error log entry.
 

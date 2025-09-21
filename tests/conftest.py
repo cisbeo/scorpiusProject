@@ -6,6 +6,7 @@ from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
+import httpx
 from httpx import AsyncClient
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -17,7 +18,7 @@ from src.db.session import AsyncSessionLocal
 
 # Override settings for testing
 os.environ["APP_ENV"] = "testing"
-os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test_scorpius"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_database.db"
 
 
 @pytest.fixture(scope="session")
@@ -25,7 +26,7 @@ def settings() -> Settings:
     """Get test settings."""
     return Settings(
         app_env="testing",
-        database_url="postgresql://test:test@localhost:5432/test_scorpius",
+        database_url="sqlite+aiosqlite:///./test_database.db",
         jwt_secret_key="test-secret-key",
         secret_key="test-app-secret",
     )
@@ -97,13 +98,35 @@ def sync_db(settings) -> Generator[Session, None, None]:
     engine.dispose()
 
 
+@pytest_asyncio.fixture(scope="session")
+async def setup_test_database(settings):
+    """Setup test database with tables."""
+    # Remove existing test database
+    import os
+    if os.path.exists("./test_database.db"):
+        os.remove("./test_database.db")
+
+    # Create test database engine and tables
+    from src.db.session import async_engine
+    from src.db.base import Base
+
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield
+
+    # Clean up
+    if os.path.exists("./test_database.db"):
+        os.remove("./test_database.db")
+
+
 @pytest_asyncio.fixture(scope="function")
-async def client(settings) -> AsyncGenerator[AsyncClient, None]:
+async def client(settings, setup_test_database) -> AsyncGenerator[AsyncClient, None]:
     """Create async HTTP client for testing API endpoints."""
     # Import here to avoid circular imports
     from src.api.v1.app import app
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
@@ -151,7 +174,7 @@ def admin_headers(settings) -> dict:
 def sample_pdf_file():
     """Create a sample PDF file for testing."""
     import io
-    from pypdf2 import PdfWriter, PdfReader
+    from PyPDF2 import PdfWriter
 
     # Create a simple PDF
     pdf_writer = PdfWriter()

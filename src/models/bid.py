@@ -2,10 +2,10 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import JSON, ForeignKey, Float, Integer, String
+from sqlalchemy import JSON, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -162,7 +162,7 @@ class BidResponse(BaseModel):
         lazy="select",
     )
 
-    compliance_checks: Mapped[List["ComplianceCheck"]] = relationship(
+    compliance_checks: Mapped[list["ComplianceCheck"]] = relationship(
         "ComplianceCheck",
         back_populates="bid_response",
         cascade="all, delete-orphan",

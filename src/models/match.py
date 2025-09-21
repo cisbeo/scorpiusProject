@@ -4,7 +4,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import JSON, ForeignKey, Float, String
+from sqlalchemy import JSON, Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

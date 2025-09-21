@@ -1,9 +1,9 @@
 """Application configuration using Pydantic settings."""
 
 from functools import lru_cache
-from typing import List, Optional
+from typing import Optional
 
-from pydantic import Field, PostgresDsn, RedisDsn, field_validator
+from pydantic import AnyUrl, Field, RedisDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,9 +29,9 @@ class Settings(BaseSettings):
     api_workers: int = Field(default=4, description="Number of API workers")
 
     # Database Configuration
-    database_url: PostgresDsn = Field(
+    database_url: AnyUrl = Field(
         default="postgresql://scorpius:scorpius@localhost:5432/scorpius_mvp",
-        description="PostgreSQL connection URL",
+        description="Database connection URL (PostgreSQL for production, SQLite for testing)",
     )
     database_pool_size: int = Field(default=20, description="Database connection pool size")
     database_max_overflow: int = Field(
@@ -70,18 +70,18 @@ class Settings(BaseSettings):
     bcrypt_rounds: int = Field(default=12, description="Bcrypt hashing rounds")
 
     # CORS Settings
-    cors_origins: List[str] = Field(
+    cors_origins: list[str] = Field(
         default=["http://localhost:3000", "http://localhost:8080"],
         description="Allowed CORS origins",
     )
     cors_allow_credentials: bool = Field(
         default=True, description="Allow credentials in CORS"
     )
-    cors_allow_methods: List[str] = Field(
+    cors_allow_methods: list[str] = Field(
         default=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         description="Allowed CORS methods",
     )
-    cors_allow_headers: List[str] = Field(
+    cors_allow_headers: list[str] = Field(
         default=["*"], description="Allowed CORS headers"
     )
 
@@ -90,7 +90,7 @@ class Settings(BaseSettings):
         default=52428800, description="Maximum upload size in bytes (50MB)"
     )
     upload_path: str = Field(default="/app/uploads", description="Upload directory path")
-    allowed_extensions: List[str] = Field(
+    allowed_extensions: list[str] = Field(
         default=[".pdf"], description="Allowed file extensions"
     )
     temp_path: str = Field(default="/tmp/scorpius", description="Temporary files path")
@@ -158,7 +158,7 @@ class Settings(BaseSettings):
 
     @field_validator("cors_origins")
     @classmethod
-    def validate_cors_origins(cls, v: List[str]) -> List[str]:
+    def validate_cors_origins(cls, v: list[str]) -> list[str]:
         """Validate CORS origins are valid URLs."""
         for origin in v:
             if not origin.startswith(("http://", "https://")):
