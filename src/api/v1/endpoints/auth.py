@@ -14,6 +14,8 @@ from src.api.v1.schemas.auth import (
 )
 from src.core.config import get_settings
 from src.db.session import get_async_db
+from src.middleware.auth import get_current_user
+from src.models.user import User
 
 # Helper functions defined at the end of this file
 from src.services.auth import AuthenticationError, AuthService
@@ -295,6 +297,55 @@ async def refresh_token(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Token refresh failed due to internal error"
         )
+
+
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    summary="Get current user",
+    description="Get the profile of the currently authenticated user",
+    responses={
+        200: {
+            "description": "Current user profile",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "email": "user@example.com",
+                        "full_name": "John Doe",
+                        "role": "bid_manager",
+                        "is_active": True,
+                        "created_at": "2024-01-01T00:00:00Z",
+                        "updated_at": "2024-01-01T00:00:00Z"
+                    }
+                }
+            }
+        },
+        401: {
+            "description": "Authentication required",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Authentication required"}
+                }
+            }
+        }
+    }
+)
+async def get_current_user_profile(
+    current_user: User = Depends(get_current_user)
+) -> UserResponse:
+    """
+    Get current user profile.
+
+    Returns the complete profile information of the currently authenticated user.
+    Requires a valid JWT token in the Authorization header.
+
+    This endpoint is commonly used by frontend applications to:
+    - Verify authentication status
+    - Display user information in the UI
+    - Check user permissions and role
+    """
+    return UserResponse.model_validate(current_user)
 
 
 @router.post(
