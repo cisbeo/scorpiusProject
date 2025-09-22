@@ -1,8 +1,48 @@
 # 🧪 Tests Locaux - Scorpius Project
 
-## 🚀 Test rapide sur machine de développement (5 minutes)
+## 🎯 Vue d'ensemble
 
-### Option 1: Test avec SQLite (le plus simple)
+Trois options pour tester Scorpius en local :
+1. **Docker** (recommandé) - Environnement le plus proche de production
+2. **SQLite** - Test rapide et simple
+3. **Manuel** - Développement et debug avancé
+
+---
+
+## 🐳 Option 1: Test avec Docker (Recommandé)
+
+### Démarrage rapide
+```bash
+# Démarrer l'environnement complet
+./test_docker.sh start
+
+# Tester toutes les fonctionnalités
+./test_docker.sh test
+
+# Voir les logs si problème
+./test_docker.sh logs
+```
+
+### Services disponibles
+- **API**: http://localhost:8000
+- **Documentation**: http://localhost:8000/docs
+- **pgAdmin**: http://localhost:5050 (admin@scorpiusproject.fr / admin)
+- **PostgreSQL**: localhost:5432 (scorpius/scorpius)
+- **Redis**: localhost:6379
+
+### ✅ Ce qui fonctionne avec Docker
+- Base PostgreSQL avec 9 tables complètes
+- Enregistrement utilisateur (avec mot de passe corrigé)
+- Connexion et génération JWT
+- ⚠️ **GET /me échoue** - problème middleware authentification
+
+### 🔧 Mot de passes qui fonctionnent
+- ✅ `TestPass1!` (simple et valide)
+- ❌ `TestPassword123!` (rejeté pour "caractères séquentiels")
+
+---
+
+## ⚡ Option 2: Test avec SQLite (le plus simple)
 
 #### 1. Installation des dépendances
 ```bash
@@ -20,7 +60,7 @@ cp .env.prod.example .env.local
 nano .env.local
 ```
 
-#### 3. Contenu .env.local (SQLite)
+#### 3. Contenu .env.local (SQLite) - CORRIGÉ
 ```bash
 # Application
 APP_ENV=development
@@ -43,6 +83,9 @@ MAX_UPLOAD_SIZE=52428800
 UPLOAD_PATH=./uploads
 TEMP_PATH=./temp
 ALLOWED_EXTENSIONS=[".pdf"]
+
+# IMPORTANT: Mot de passe compatible
+# Utilisez TestPass1! au lieu de TestPassword123!
 ```
 
 #### 4. Démarrage local
@@ -50,18 +93,20 @@ ALLOWED_EXTENSIONS=[".pdf"]
 # Créer dossiers
 mkdir -p uploads temp logs
 
-# Initialiser base SQLite
+# Initialiser base SQLite avec TOUS les modèles
 python -c "
 import asyncio
 import os
 os.environ['DATABASE_URL'] = 'sqlite+aiosqlite:///./test_scorpius.db'
 from src.db.session import async_engine
 from src.db.base import Base
+# IMPORTANT: Importer tous les modèles
+from src.models import *
 
 async def init_db():
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print('✅ Base SQLite initialisée')
+    print('✅ Base SQLite initialisée avec tous les modèles')
 
 asyncio.run(init_db())
 "
@@ -76,13 +121,23 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000 --env-file .env.local
 # Test santé
 curl http://localhost:8000/health
 
+# Test enregistrement (avec mot de passe corrigé)
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "TestPass1!",
+    "full_name": "Test User",
+    "role": "bid_manager"
+  }'
+
 # Test documentation
 open http://localhost:8000/docs
 ```
 
 ---
 
-### Option 2: Test avec Docker (plus proche production)
+## 🔧 Option 3: Manuel (Développement avancé)
 
 #### 1. Docker Compose de développement
 ```bash

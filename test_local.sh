@@ -131,7 +131,7 @@ test_api() {
         -H "Content-Type: application/json" \
         -d '{
             "email": "test@example.com",
-            "password": "TestPassword123!",
+            "password": "TestPass1!",
             "full_name": "Utilisateur Test",
             "role": "bid_manager"
         }')
@@ -144,7 +144,7 @@ test_api() {
         -H "Content-Type: application/json" \
         -d '{
             "email": "test@example.com",
-            "password": "TestPassword123!"
+            "password": "TestPass1!"
         }')
     echo "Réponse connexion: $LOGIN_RESPONSE"
 
@@ -153,13 +153,27 @@ test_api() {
 import sys, json
 try:
     data = json.load(sys.stdin)
-    print(data['data']['access_token'])
+    print(data['tokens']['access_token'])
 except:
     print('')
 ")
 
     if [[ -n "$TOKEN" ]]; then
         log "✅ Token obtenu avec succès"
+
+        # Test GET /me endpoint (authentication test)
+        echo
+        info "Test endpoint GET /me (authentification)..."
+        ME_RESPONSE=$(curl -s -X GET http://localhost:8000/api/v1/auth/me \
+            -H "Authorization: Bearer $TOKEN")
+        echo "Réponse GET /me: $ME_RESPONSE"
+
+        if echo "$ME_RESPONSE" | grep -q '"id"'; then
+            log "✅ GET /me fonctionne - authentification OK"
+        else
+            warning "❌ GET /me échoue - problème d'authentification middleware"
+            echo "Token utilisé: ${TOKEN:0:50}..."
+        fi
 
         # Test de création de profil entreprise
         echo

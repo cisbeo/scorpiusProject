@@ -358,9 +358,14 @@ auth_middleware = AuthMiddleware()
 
 
 # FastAPI dependencies for common auth patterns
+from fastapi import Depends
+
+# Create HTTPBearer security scheme
+security = HTTPBearer()
+
 async def get_current_user_optional(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = None
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
 ) -> Optional[User]:
     """
     FastAPI dependency to get current user (optional).
@@ -377,7 +382,7 @@ async def get_current_user_optional(
 
 async def get_current_user(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = None
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
     """
     FastAPI dependency to require authentication.
@@ -397,7 +402,7 @@ async def get_current_user(
 
 async def get_current_admin(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = None
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
     """
     FastAPI dependency to require admin authentication.
@@ -417,7 +422,7 @@ async def get_current_admin(
 
 async def get_current_bid_manager(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = None
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
     """
     FastAPI dependency to require bid manager authentication.

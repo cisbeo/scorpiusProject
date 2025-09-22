@@ -1,11 +1,13 @@
 # Plan de Déploiement - Scorpius Project MVP
 
 ## 🎯 Objectif
+
 Déployer le backend Scorpius MVP en environnement de production pour les tests utilisateurs et la validation fonctionnelle.
 
 ## 📋 Vue d'ensemble du déploiement
 
 ### Architecture cible
+
 ```
 Internet → Load Balancer → FastAPI App → PostgreSQL
                        ↘ Redis Cache
@@ -15,23 +17,27 @@ Internet → Load Balancer → FastAPI App → PostgreSQL
 ## 🔧 Infrastructure requise
 
 ### 1. Serveur Application
+
 - **Spécifications minimales**: 2 CPU, 4GB RAM, 50GB SSD
 - **OS recommandé**: Ubuntu 22.04 LTS
 - **Services**: Docker, Docker Compose
 - **Ports**: 80 (HTTP), 443 (HTTPS), 8000 (API)
 
 ### 2. Base de données PostgreSQL
+
 - **Version**: PostgreSQL 15+
 - **Spécifications**: 2 CPU, 4GB RAM, 100GB SSD
 - **Extensions**: pgvector (pour futures fonctionnalités ML)
 - **Backup**: Snapshots quotidiens
 
 ### 3. Cache Redis
+
 - **Version**: Redis 7+
 - **Spécifications**: 1 CPU, 2GB RAM
 - **Persistence**: RDB + AOF
 
 ### 4. Stockage fichiers
+
 - **Type**: Volume persistant ou S3-compatible
 - **Capacité**: 500GB minimum
 - **Sécurité**: Chiffrement at-rest
@@ -39,6 +45,7 @@ Internet → Load Balancer → FastAPI App → PostgreSQL
 ## 🐳 Configuration Docker
 
 ### Dockerfile de production
+
 ```dockerfile
 FROM python:3.11-slim
 
@@ -72,6 +79,7 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", 
 ```
 
 ### docker-compose.prod.yml
+
 ```yaml
 version: '3.8'
 
@@ -152,6 +160,7 @@ networks:
 ## ⚙️ Configuration de production
 
 ### 1. Variables d'environnement (.env.prod)
+
 ```bash
 # Application
 APP_ENV=production
@@ -180,7 +189,7 @@ JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
 
 # CORS
-CORS_ORIGINS=["https://votre-domaine.fr"]
+CORS_ORIGINS=["https://scorpius.bbmiss.co"]
 
 # File Upload
 MAX_UPLOAD_SIZE=104857600
@@ -190,11 +199,12 @@ TEMP_PATH=/tmp/scorpius
 # Email (optionnel)
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
-SMTP_USER=noreply@votre-domaine.fr
+SMTP_USER=noreply@scorpius.bbmiss.co
 SMTP_PASSWORD=${SMTP_PASSWORD}
 ```
 
 ### 2. Configuration Nginx
+
 ```nginx
 upstream scorpius_api {
     server api:8000;
@@ -202,13 +212,13 @@ upstream scorpius_api {
 
 server {
     listen 80;
-    server_name votre-domaine.fr;
+    server_name scorpius.bbmiss.co;
     return 301 https://$server_name$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name votre-domaine.fr;
+    server_name scorpius.bbmiss.co;
 
     ssl_certificate /etc/nginx/ssl/cert.pem;
     ssl_certificate_key /etc/nginx/ssl/key.pem;
@@ -238,6 +248,7 @@ server {
 ### Phase 1: Préparation de l'environnement
 
 #### 1.1 Configuration du serveur
+
 ```bash
 # Mise à jour du système
 sudo apt update && sudo apt upgrade -y
@@ -253,12 +264,14 @@ sudo chmod +x /usr/local/bin/docker-compose
 ```
 
 #### 1.2 Préparation des répertoires
+
 ```bash
 mkdir -p /opt/scorpius/{uploads,logs,backups,ssl}
 cd /opt/scorpius
 ```
 
 #### 1.3 Génération des secrets
+
 ```bash
 # Génération JWT secret
 openssl rand -hex 32
@@ -273,12 +286,14 @@ openssl rand -base64 32
 ### Phase 2: Déploiement de l'application
 
 #### 2.1 Clonage et préparation
+
 ```bash
 git clone https://github.com/votre-org/scorpius-project.git
 cd scorpius-project
 ```
 
 #### 2.2 Configuration de l'environnement
+
 ```bash
 # Création du fichier d'environnement
 cp .env.example .env.prod
@@ -286,6 +301,7 @@ cp .env.example .env.prod
 ```
 
 #### 2.3 Construction et lancement
+
 ```bash
 # Construction des images
 docker-compose -f docker-compose.prod.yml build
@@ -297,6 +313,7 @@ docker-compose -f docker-compose.prod.yml up -d
 ### Phase 3: Initialisation de la base de données
 
 #### 3.1 Migrations
+
 ```bash
 # Attendre que PostgreSQL soit prêt
 docker-compose -f docker-compose.prod.yml exec api python -c "
@@ -314,6 +331,7 @@ asyncio.run(init_db())
 ```
 
 #### 3.2 Création utilisateur admin (optionnel)
+
 ```bash
 docker-compose -f docker-compose.prod.yml exec api python -c "
 import asyncio
@@ -324,8 +342,8 @@ async def create_admin():
     async for db in get_async_db():
         auth_service = AuthService(db)
         await auth_service.register_user(
-            email='admin@votre-domaine.fr',
-            password='MotDePasseSecurise123!',
+            email='admin@scorpius.bbmiss.co',
+            password='MotDePasseSecurise1QE!',
             full_name='Administrateur',
             role='admin'
         )
@@ -339,28 +357,30 @@ asyncio.run(create_admin())
 ## 🔍 Tests de validation
 
 ### 1. Tests de santé
+
 ```bash
 # Test de l'API
-curl -X GET https://votre-domaine.fr/health
+curl -k -X GET https://scorpius.bbmiss.co/health
 
 # Test des endpoints principaux
-curl -X GET https://votre-domaine.fr/api/v1/docs
+curl -k -X GET https://scorpius.bbmiss.co/api/v1/docs
 ```
 
 ### 2. Tests fonctionnels
+
 ```bash
 # Test d'enregistrement
-curl -X POST https://votre-domaine.fr/api/v1/auth/register \
+curl -k -X POST https://scorpius.bbmiss.co/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
-    "password": "TestPassword123!",
+    "password": "TestPassword1XA!",
     "full_name": "Utilisateur Test",
     "role": "bid_manager"
   }'
 
 # Test de connexion
-curl -X POST https://votre-domaine.fr/api/v1/auth/login \
+curl -k -X POST https://scorpius.bbmiss.co/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
@@ -371,6 +391,7 @@ curl -X POST https://votre-domaine.fr/api/v1/auth/login \
 ## 📊 Monitoring et observabilité
 
 ### 1. Métriques système
+
 ```bash
 # Script de monitoring
 #!/bin/bash
@@ -378,7 +399,7 @@ echo "=== Scorpius System Status ==="
 docker-compose -f docker-compose.prod.yml ps
 echo ""
 echo "=== API Health ==="
-curl -s https://votre-domaine.fr/health | jq '.'
+curl -k -s https://scorpius.bbmiss.co/health | jq '.'
 echo ""
 echo "=== Database Status ==="
 docker-compose -f docker-compose.prod.yml exec postgres pg_isready
@@ -388,6 +409,7 @@ df -h /opt/scorpius
 ```
 
 ### 2. Logs centralisés
+
 ```bash
 # Consultation des logs
 docker-compose -f docker-compose.prod.yml logs -f api
@@ -405,14 +427,16 @@ echo '{
 ## 🔒 Sécurité
 
 ### 1. Certificats SSL
+
 ```bash
 # Avec Let's Encrypt (Certbot)
 sudo snap install --classic certbot
-sudo certbot certonly --standalone -d votre-domaine.fr
-sudo cp /etc/letsencrypt/live/votre-domaine.fr/* /opt/scorpius/ssl/
+sudo certbot certonly --standalone -d scorpius.bbmiss.co
+sudo cp /etc/letsencrypt/live/scorpius.bbmiss.co/* /opt/scorpius/ssl/
 ```
 
 ### 2. Firewall
+
 ```bash
 # Configuration UFW
 sudo ufw default deny incoming
@@ -424,6 +448,7 @@ sudo ufw enable
 ```
 
 ### 3. Backup automatique
+
 ```bash
 # Script de sauvegarde
 #!/bin/bash
@@ -435,18 +460,21 @@ find /opt/scorpius/backups -name "backup_*.sql" -mtime +7 -delete
 ## 📅 Planning de déploiement
 
 ### Semaine 1: Préparation
+
 - [ ] Provision des serveurs
 - [ ] Configuration DNS
 - [ ] Génération des certificats SSL
 - [ ] Tests de l'infrastructure
 
 ### Semaine 2: Déploiement
+
 - [ ] Installation des services
 - [ ] Configuration de l'application
 - [ ] Tests fonctionnels
 - [ ] Formation des utilisateurs
 
 ### Semaine 3: Tests utilisateurs
+
 - [ ] Tests d'acceptation
 - [ ] Correction des bugs identifiés
 - [ ] Optimisations de performance
@@ -455,12 +483,14 @@ find /opt/scorpius/backups -name "backup_*.sql" -mtime +7 -delete
 ## ⚠️ Points d'attention
 
 ### Critiques
+
 1. **Sauvegarde**: Backup automatique quotidien obligatoire
 2. **Monitoring**: Surveillance continue de la santé du système
 3. **Sécurité**: Mise à jour régulière des dépendances
 4. **Performance**: Monitoring des métriques de performance
 
 ### Nice-to-have
+
 1. **CDN**: Pour les fichiers statiques
 2. **Load balancer**: Pour la haute disponibilité
 3. **Monitoring avancé**: Prometheus + Grafana
@@ -469,11 +499,13 @@ find /opt/scorpius/backups -name "backup_*.sql" -mtime +7 -delete
 ## 📞 Support et maintenance
 
 ### Contacts d'urgence
+
 - **Développeur principal**: [contact]
 - **Admin système**: [contact]
 - **Responsable métier**: [contact]
 
 ### Procédures d'urgence
+
 1. **Arrêt d'urgence**: `docker-compose -f docker-compose.prod.yml down`
 2. **Restauration**: Script de restore depuis backup
 3. **Rollback**: Retour à la version précédente
