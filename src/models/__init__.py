@@ -14,6 +14,13 @@ from src.models.match import CapabilityMatch, MatchRecommendation
 from src.models.requirements import ExtractedRequirements
 from src.models.user import User, UserRole
 
+# Optional NLP models (only available with ML dependencies)
+try:
+    from src.models.embeddings import DocumentEmbedding, RequirementSummary
+    EMBEDDINGS_AVAILABLE = True
+except ImportError:
+    EMBEDDINGS_AVAILABLE = False
+
 __all__ = [
     # User
     "User",
@@ -43,3 +50,10 @@ __all__ = [
     # Audit
     "AuditLog",
 ]
+
+# Add NLP models to exports if available
+if EMBEDDINGS_AVAILABLE:
+    __all__.extend([
+        "DocumentEmbedding",
+        "RequirementSummary",
+    ])

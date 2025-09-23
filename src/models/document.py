@@ -5,7 +5,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from src.models.events import ProcessingEvent
     from src.models.requirements import ExtractedRequirements
     from src.models.user import User
+    from src.models.embeddings import DocumentEmbedding, RequirementSummary
 
 
 class DocumentStatus(str, Enum):
@@ -89,6 +90,19 @@ class ProcurementDocument(BaseModel):
         default=1,
     )
 
+    # NLP Processing fields
+    nlp_processed: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="Whether NLP processing has been completed",
+    )
+    nlp_metadata: Mapped[Optional[dict]] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="NLP processing metadata and statistics",
+    )
+
     # Foreign keys
     uploaded_by: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
@@ -125,6 +139,23 @@ class ProcurementDocument(BaseModel):
         cascade="all, delete-orphan",
         lazy="select",
         order_by="ProcessingEvent.created_at",
+    )
+
+    # NLP relationships
+    embeddings: Mapped[list["DocumentEmbedding"]] = relationship(
+        "DocumentEmbedding",
+        back_populates="document",
+        cascade="all, delete-orphan",
+        lazy="select",
+        order_by="DocumentEmbedding.chunk_id",
+    )
+
+    requirement_summaries: Mapped[list["RequirementSummary"]] = relationship(
+        "RequirementSummary",
+        back_populates="document",
+        cascade="all, delete-orphan",
+        lazy="select",
+        order_by="RequirementSummary.requirement_type",
     )
 
     def __repr__(self) -> str:

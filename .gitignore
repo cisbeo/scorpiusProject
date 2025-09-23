@@ -23,6 +23,7 @@ MANIFEST
 
 # Virtual Environment
 venv/
+venv_*/
 ENV/
 env/
 .venv
@@ -89,3 +90,24 @@ Thumbs.db
 *.backup
 *.tmp
 *~
+
+# Temporary test files
+test_*.py
+*_test.py
+test_*.db
+
+# Analysis files
+*_analysis.json
+*_analysis.md
+
+# POC and experimental
+poc/
+demo/
+experimental/
+
+# Setup scripts
+setup_*.sh
+activate_*.sh
+
+# Docling specific
+.docling_cache/
