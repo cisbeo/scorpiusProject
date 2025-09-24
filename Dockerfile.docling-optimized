@@ -1,0 +1,118 @@
+# =============================================================================
+# Stage 1: Builder - Install all dependencies and build artifacts
+# =============================================================================
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Install system dependencies needed for building
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    libpq-dev \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Upgrade pip and install wheel
+RUN pip install --upgrade pip wheel setuptools
+
+# Copy requirements files
+COPY requirements-prod.txt requirements-docling.txt ./
+
+# Install dependencies in order of importance
+# 1. Fix NumPy version first (critical for compatibility)
+RUN pip install --no-cache-dir "numpy<2.0"
+
+# 2. Install PyTorch CPU version (large dependency)
+RUN pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.1.2+cpu torchvision==0.16.2+cpu
+
+# 3. Install base requirements
+RUN pip install --no-cache-dir -r requirements-prod.txt
+
+# 4. Install ML/NLP dependencies
+RUN pip install --no-cache-dir \
+    transformers \
+    sentence-transformers \
+    scipy \
+    scikit-learn
+
+# 5. Install Docling and its dependencies
+RUN pip install --no-cache-dir \
+    docling-parse>=2.0.0 \
+    docling>=2.0.0 \
+    docling-core>=2.2.3 \
+    docling-ibm-models>=2.0.1 \
+    pypdfium2>=4.30.0 \
+    python-docx>=1.1.2 \
+    python-pptx>=1.0.2 \
+    beautifulsoup4>=4.12.3 \
+    pytesseract>=0.3.10
+
+# =============================================================================
+# Stage 2: Runtime - Minimal image with only necessary components
+# =============================================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install only runtime dependencies (no build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    postgresql-client \
+    libmagic1 \
+    curl \
+    tesseract-ocr \
+    tesseract-ocr-fra \
+    tesseract-ocr-eng \
+    libtesseract-dev \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libgomp1 \
+    poppler-utils \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Set environment variables
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata \
+    TRANSFORMERS_CACHE=/tmp/transformers \
+    HF_HOME=/tmp/huggingface \
+    TORCH_HOME=/tmp/torch
+
+# Create non-root user
+RUN useradd -m -u 1000 -s /bin/bash scorpius && \
+    mkdir -p /app/logs /app/uploads /app/temp && \
+    chown -R scorpius:scorpius /app
+
+# Copy application code
+COPY --chown=scorpius:scorpius src/ ./src/
+COPY --chown=scorpius:scorpius main.py alembic.ini ./
+COPY --chown=scorpius:scorpius alembic/ ./alembic/
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Switch to non-root user
+USER scorpius
+
+# Expose port
+EXPOSE 8000
+
+# Run the application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

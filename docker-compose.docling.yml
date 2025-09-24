@@ -1,10 +1,9 @@
-
 services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: scorpius-app
+      dockerfile: Dockerfile.docling-fixed
+    container_name: scorpius-app-docling
     ports:
       - "8000:8000"
     environment:
@@ -15,6 +14,7 @@ services:
       - ./src:/app/src
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+      - ./alembic:/app/alembic
     depends_on:
       db:
         condition: service_healthy

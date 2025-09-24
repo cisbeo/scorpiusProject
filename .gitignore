@@ -111,3 +111,5 @@ activate_*.sh
 
 # Docling specific
 .docling_cache/
+# Example files and test documents
+Examples/

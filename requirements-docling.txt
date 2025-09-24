@@ -1,0 +1,18 @@
+# Docling and its dependencies for advanced document processing
+# This file is separate to allow progressive installation
+
+# Core Docling package
+docling==2.3.0
+
+# Additional dependencies that might be needed
+# These are usually installed automatically but listing them can help with caching
+beautifulsoup4>=4.12.3
+certifi>=2024.7.4
+filetype>=1.2.0
+huggingface-hub>=0.23
+marko>=2.1.2
+pandas>=2.1.4
+pyarrow>=16.1.0
+
+# OCR support (optional but recommended)
+# easyocr>=1.7  # Uncomment if OCR is needed (adds ~1GB)

@@ -10,18 +10,28 @@ from src.processors.pdf_processor import PDFProcessor
 
 # Try to import Docling-enhanced processors (highest priority)
 try:
-    from src.processors.pdf_processor_nlp_docling import PDFProcessorNLPDocling
+    from src.processors.doc_processor_nlp_docling import DocProcessorNLPDocling
     DOCLING_NLP_AVAILABLE = True
 except ImportError:
-    PDFProcessorNLPDocling = None
-    DOCLING_NLP_AVAILABLE = False
+    # Fallback to v1 if v2 not available
+    try:
+        from src.processors.pdf_processor_nlp_docling import PDFProcessorNLPDocling as DocProcessorNLPDocling
+        DOCLING_NLP_AVAILABLE = True
+    except ImportError:
+        DocProcessorNLPDocling = None
+        DOCLING_NLP_AVAILABLE = False
 
 try:
-    from src.processors.pdf_processor_docling import PDFProcessorDocling
+    from src.processors.doc_processor_docling import DocProcessorDocling
     DOCLING_AVAILABLE = True
 except ImportError:
-    PDFProcessorDocling = None
-    DOCLING_AVAILABLE = False
+    # Fallback to v1 if v2 not available
+    try:
+        from src.processors.pdf_processor_docling import PDFProcessorDocling as DocProcessorDocling
+        DOCLING_AVAILABLE = True
+    except ImportError:
+        DocProcessorDocling = None
+        DOCLING_AVAILABLE = False
 
 # Try to import NLP-enhanced processor (fallback)
 try:
@@ -32,14 +42,13 @@ except ImportError:
     PDF_NLP_AVAILABLE = False
 
 # Register processors in order of priority
-# TODO: Fix Docling processors to implement supports_file method
-# if DOCLING_NLP_AVAILABLE:
-#     # Highest priority: Docling with NLP
-#     processor_factory.register_processor(PDFProcessorNLPDocling())
-# elif DOCLING_AVAILABLE:
-#     # Second priority: Docling without NLP
-#     processor_factory.register_processor(PDFProcessorDocling())
-if PDF_NLP_AVAILABLE:
+if DOCLING_NLP_AVAILABLE:
+    # Highest priority: Docling with NLP (async support, multi-format)
+    processor_factory.register_processor(DocProcessorNLPDocling())
+elif DOCLING_AVAILABLE:
+    # Second priority: Docling without NLP (async support, multi-format)
+    processor_factory.register_processor(DocProcessorDocling())
+elif PDF_NLP_AVAILABLE:
     # Third priority: Standard NLP processor
     processor_factory.register_processor(PDFProcessorNLP())
 else:
@@ -55,10 +64,10 @@ __all__ = [
 ]
 
 if DOCLING_NLP_AVAILABLE:
-    __all__.append("PDFProcessorNLPDocling")
+    __all__.append("DocProcessorNLPDocling")
 
 if DOCLING_AVAILABLE:
-    __all__.append("PDFProcessorDocling")
+    __all__.append("DocProcessorDocling")
 
 if PDF_NLP_AVAILABLE:
     __all__.append("PDFProcessorNLP")
