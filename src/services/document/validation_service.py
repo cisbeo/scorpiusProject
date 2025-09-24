@@ -34,6 +34,10 @@ class DocumentValidationService:
         self.allowed_extensions = self.settings.allowed_extensions
         self.temp_path = Path(self.settings.temp_path)
 
+        # Security validation settings
+        self.strict_pdf_validation = os.getenv("STRICT_PDF_VALIDATION", "false").lower() == "true"
+        self.allow_pdf_uris = os.getenv("ALLOW_PDF_URIS", "true").lower() == "true"
+
         # Ensure temp directory exists
         self.temp_path.mkdir(parents=True, exist_ok=True)
 
@@ -301,12 +305,17 @@ class DocumentValidationService:
             b'/JS',
             b'/Launch',
             b'/EmbeddedFile',
-            b'/URI',
         ]
 
-        for suspicious in suspicious_content:
-            if suspicious in file_content:
-                errors.append(f"PDF contains potentially dangerous content: {suspicious.decode('utf-8', errors='ignore')}")
+        # Add URI check only if not allowed
+        if not self.allow_pdf_uris:
+            suspicious_content.append(b'/URI')
+
+        # Only check for suspicious content in strict mode
+        if self.strict_pdf_validation:
+            for suspicious in suspicious_content:
+                if suspicious in file_content:
+                    errors.append(f"PDF contains potentially dangerous content: {suspicious.decode('utf-8', errors='ignore')}")
 
         return len(errors) == 0, errors
 
