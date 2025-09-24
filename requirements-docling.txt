@@ -16,3 +16,36 @@ pyarrow>=16.1.0
 
 # OCR support (optional but recommended)
 # easyocr>=1.7  # Uncomment if OCR is needed (adds ~1GB)
+
+# ============================================
+# LlamaIndex for AI-powered document intelligence
+# ============================================
+
+# Core LlamaIndex packages
+llama-index==0.10.0
+llama-index-core>=0.10.0
+
+# Vector store support for PostgreSQL with pgvector
+llama-index-vector-stores-postgres>=0.1.0
+
+# Embeddings support
+llama-index-embeddings-huggingface>=0.1.0
+llama-index-embeddings-openai>=0.1.0  # Optional: for OpenAI embeddings
+
+# File readers for various document formats
+llama-index-readers-file>=0.1.0
+
+# LLM integrations (optional, based on your needs)
+llama-index-llms-openai>=0.1.0  # For OpenAI GPT models
+llama-index-llms-huggingface>=0.1.0  # For local HuggingFace models
+
+# Additional LlamaIndex utilities
+llama-index-postprocessor-cohere-rerank>=0.1.0  # For result reranking
+llama-index-node-parser-sentence>=0.1.0  # For better text chunking
+
+# Supporting libraries for LlamaIndex
+chromadb>=0.4.0  # Alternative vector store (optional)
+qdrant-client>=1.7.0  # Another vector store option (optional)
+
+# pgvector support
+pgvector>=0.2.0
