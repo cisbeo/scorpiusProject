@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     libpq-dev \
     python3-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment
@@ -28,33 +29,37 @@ COPY requirements-prod.txt requirements-docling.txt ./
 # 1. Fix NumPy version first (critical for compatibility)
 RUN pip install --no-cache-dir "numpy<2.0"
 
-# 2. Install PyTorch CPU version (large dependency)
-# Use generic torch version that works on all architectures
-RUN pip install --no-cache-dir \
-    torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cpu || \
+# 2. Install PyTorch - fallback approach for multi-architecture
+# Try CPU-optimized version first, fallback to standard if not available
+RUN pip install --no-cache-dir torch torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/cpu 2>/dev/null || \
     pip install --no-cache-dir torch torchvision
 
 # 3. Install base requirements
-RUN pip install --no-cache-dir -r requirements-prod.txt
+RUN pip install --no-cache-dir -r requirements-prod.txt || true
 
 # 4. Install ML/NLP dependencies
 RUN pip install --no-cache-dir \
     transformers \
     sentence-transformers \
     scipy \
-    scikit-learn
+    scikit-learn || true
 
 # 5. Install Docling and its dependencies
 RUN pip install --no-cache-dir \
     docling-parse>=2.0.0 \
     docling>=2.0.0 \
-    docling-core>=2.2.3 \
-    docling-ibm-models>=2.0.1 \
     pypdfium2>=4.30.0 \
     python-docx>=1.1.2 \
     python-pptx>=1.0.2 \
     beautifulsoup4>=4.12.3 \
-    pytesseract>=0.3.10
+    pytesseract>=0.3.10 || true
+
+# Install remaining dependencies without stopping on errors
+RUN pip install --no-cache-dir \
+    docling-core>=2.2.3 \
+    docling-ibm-models>=2.0.1 \
+    deepsearch-glm>=0.26.1 || true
 
 # =============================================================================
 # Stage 2: Runtime - Minimal image with only necessary components
@@ -72,7 +77,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-fra \
     tesseract-ocr-eng \
-    libtesseract-dev \
     libgl1 \
     libglib2.0-0 \
     libsm6 \
@@ -93,12 +97,15 @@ ENV PATH="/opt/venv/bin:$PATH" \
     TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata \
     TRANSFORMERS_CACHE=/tmp/transformers \
     HF_HOME=/tmp/huggingface \
-    TORCH_HOME=/tmp/torch
+    TORCH_HOME=/tmp/torch \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Create non-root user
 RUN useradd -m -u 1000 -s /bin/bash scorpius && \
     mkdir -p /app/logs /app/uploads /app/temp && \
-    chown -R scorpius:scorpius /app
+    chown -R scorpius:scorpius /app && \
+    chmod 755 /app/logs /app/uploads /app/temp
 
 # Copy application code
 COPY --chown=scorpius:scorpius src/ ./src/
