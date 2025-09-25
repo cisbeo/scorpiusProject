@@ -128,15 +128,15 @@ class ProcurementDocument(BaseModel):
     )
 
     # Foreign keys
-    uploaded_by: Mapped[UUID] = mapped_column(
+    uploaded_by: Mapped[Optional[UUID]] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("users.id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
 
     # Relationships
-    uploaded_by_user: Mapped["User"] = relationship(
+    uploaded_by_user: Mapped[Optional["User"]] = relationship(
         "User",
         back_populates="procurement_documents",
         lazy="select",

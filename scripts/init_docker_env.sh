@@ -414,6 +414,18 @@ setup_python_venv() {
     pip install --quiet -r requirements.txt
     pip install --quiet asyncpg  # S'assurer qu'asyncpg est installé
 
+    # Installer les dépendances NLP optionnelles si disponibles
+    if [ -f "requirements-nlp.txt" ]; then
+        log_info "Installation des dépendances NLP avancées (Unstructured, spaCy)..."
+        pip install --quiet -r requirements-nlp.txt
+
+        # Télécharger le modèle spaCy français si spaCy est installé
+        if python -c "import spacy" 2>/dev/null; then
+            log_debug "Téléchargement du modèle spaCy français..."
+            python -m spacy download fr_core_news_sm --quiet 2>/dev/null || true
+        fi
+    fi
+
     log_success "Environnement Python configuré"
 }
 

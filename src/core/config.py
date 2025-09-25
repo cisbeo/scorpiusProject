@@ -87,7 +87,7 @@ class Settings(BaseSettings):
 
     # File Upload Settings
     max_upload_size: int = Field(
-        default=52428800, description="Maximum upload size in bytes (50MB)"
+        default=104857600, description="Maximum upload size in bytes (100MB)"
     )
     upload_path: str = Field(default="/app/uploads", description="Upload directory path")
     allowed_extensions: list[str] = Field(
@@ -97,7 +97,7 @@ class Settings(BaseSettings):
 
     # Document Processing
     processing_timeout: int = Field(
-        default=30, description="Document processing timeout in seconds"
+        default=300, description="Document processing timeout in seconds (5 minutes for Unstructured)"
     )
     max_concurrent_processing: int = Field(
         default=5, description="Maximum concurrent document processing"

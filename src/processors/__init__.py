@@ -7,8 +7,11 @@ from src.processors.base import (
     processor_factory,
 )
 from src.processors.pdf_processor import PDFProcessor
+from src.processors.unstructured_processor import UnstructuredProcessor
 
-# Register PDF processor
+# Register processors
+# UnstructuredProcessor as primary (will fallback to PyPDF2 if unavailable)
+processor_factory.register_processor(UnstructuredProcessor())
 processor_factory.register_processor(PDFProcessor())
 
 __all__ = [
@@ -16,5 +19,6 @@ __all__ = [
     "ProcessingResult",
     "ProcessingError",
     "PDFProcessor",
+    "UnstructuredProcessor",
     "processor_factory",
 ]

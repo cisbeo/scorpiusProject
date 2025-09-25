@@ -18,8 +18,20 @@ python-multipart==0.0.6           # Form data support
 email-validator==2.1.0            # Email validation
 
 # Document Processing
-PyPDF2==3.0.0          # PDF extraction
+PyPDF2==3.0.0          # PDF extraction (fallback)
 python-magic==0.4.27   # File type detection
+unstructured[pdf]==0.18.15  # Advanced document extraction
+pypdf==6.1.0           # PDF manipulation
+pdfplumber==0.11.7     # Table extraction from PDFs
+
+# NLP & Machine Learning
+spacy==3.7.0           # NLP framework
+scikit-learn==1.7.2    # Machine learning (TF-IDF, etc.)
+sentence-transformers==5.1.1  # Semantic embeddings
+numpy<2                # Numerical computing (v1.x for compatibility)
+
+# Vector Database Support
+# pgvector==0.2.5      # PostgreSQL vector extension (uncomment when using)
 
 # Utilities
 python-dotenv==1.0.0   # Environment variables
