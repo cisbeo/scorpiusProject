@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import AnyUrl, Field, RedisDsn, field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     api_workers: int = Field(default=4, description="Number of API workers")
 
     # Database Configuration
-    database_url: AnyUrl = Field(
+    database_url: str = Field(
         default="postgresql://scorpius:scorpius@localhost:5432/scorpius_mvp",
         description="Database connection URL (PostgreSQL for production, SQLite for testing)",
     )
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     )
 
     # Redis Configuration
-    redis_url: RedisDsn = Field(
+    redis_url: str = Field(
         default="redis://localhost:6379/0",
         description="Redis connection URL",
     )
@@ -164,6 +164,11 @@ class Settings(BaseSettings):
             if not origin.startswith(("http://", "https://")):
                 raise ValueError(f"Invalid CORS origin: {origin}")
         return v
+
+    @property
+    def DATABASE_URL(self) -> str:
+        """Get database URL for async connections."""
+        return self.get_database_url(async_mode=True)
 
     @property
     def is_production(self) -> bool:

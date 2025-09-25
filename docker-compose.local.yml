@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: scorpius-postgres-local
+    environment:
+      POSTGRES_USER: scorpius
+      POSTGRES_PASSWORD: scorpiusdev
+      POSTGRES_DB: scorpius_dev
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scorpius -d scorpius_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - scorpius-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: scorpius-redis-local
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - scorpius-network
+
+volumes:
+  postgres_data:
+
+networks:
+  scorpius-network:
+    driver: bridge

@@ -9,8 +9,10 @@ from src.models.compliance import (
     ComplianceStatus,
 )
 from src.models.document import DocumentStatus, ProcurementDocument
+from src.models.document_type import DocumentType, DocumentTypeInfo
 from src.models.events import EventStatus, ProcessingEvent, ProcessingStage
 from src.models.match import CapabilityMatch, MatchRecommendation
+from src.models.procurement_tender import ProcurementTender, TenderStatus
 from src.models.requirements import ExtractedRequirements
 from src.models.user import User, UserRole
 
@@ -18,9 +20,14 @@ __all__ = [
     # User
     "User",
     "UserRole",
+    # Tender
+    "ProcurementTender",
+    "TenderStatus",
     # Document
     "ProcurementDocument",
     "DocumentStatus",
+    "DocumentType",
+    "DocumentTypeInfo",
     # Requirements
     "ExtractedRequirements",
     # Company

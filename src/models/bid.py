@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from src.models.compliance import ComplianceCheck
     from src.models.document import ProcurementDocument
     from src.models.match import CapabilityMatch
+    from src.models.procurement_tender import ProcurementTender
     from src.models.user import User
 
 
@@ -45,6 +46,12 @@ class BidResponse(BaseModel):
         PGUUID(as_uuid=True),
         ForeignKey("procurement_documents.id"),
         nullable=False,
+        index=True,
+    )
+    tender_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("procurement_tenders.id"),
+        nullable=True,
         index=True,
     )
     company_profile_id: Mapped[UUID] = mapped_column(
@@ -132,6 +139,12 @@ class BidResponse(BaseModel):
     # Relationships
     procurement_document: Mapped["ProcurementDocument"] = relationship(
         "ProcurementDocument",
+        back_populates="bid_responses",
+        lazy="select",
+    )
+
+    tender: Mapped[Optional["ProcurementTender"]] = relationship(
+        "ProcurementTender",
         back_populates="bid_responses",
         lazy="select",
     )

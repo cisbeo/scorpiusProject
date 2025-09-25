@@ -5,15 +5,17 @@ from enum import Enum
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import BaseModel
+from src.models.document_type import DocumentType
 
 if TYPE_CHECKING:
     from src.models.bid import BidResponse
     from src.models.events import ProcessingEvent
+    from src.models.procurement_tender import ProcurementTender
     from src.models.requirements import ExtractedRequirements
     from src.models.user import User
 
@@ -89,6 +91,42 @@ class ProcurementDocument(BaseModel):
         default=1,
     )
 
+    # Document type and tender association
+    tender_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("procurement_tenders.id"),
+        nullable=True,
+        index=True,
+        comment="Associated tender ID",
+    )
+
+    document_type: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True,
+        comment="Type of document (RC, CCAP, CCTP, etc.)",
+    )
+
+    is_mandatory: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="Whether this document type is mandatory for the tender",
+    )
+
+    # Cross-references and metadata
+    cross_references: Mapped[Optional[dict]] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="References to other documents in the tender",
+    )
+
+    extraction_metadata: Mapped[Optional[dict]] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="Extracted metadata specific to document type",
+    )
+
     # Foreign keys
     uploaded_by: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
@@ -101,6 +139,12 @@ class ProcurementDocument(BaseModel):
     uploaded_by_user: Mapped["User"] = relationship(
         "User",
         back_populates="procurement_documents",
+        lazy="select",
+    )
+
+    tender: Mapped[Optional["ProcurementTender"]] = relationship(
+        "ProcurementTender",
+        back_populates="documents",
         lazy="select",
     )
 
@@ -129,7 +173,8 @@ class ProcurementDocument(BaseModel):
 
     def __repr__(self) -> str:
         """String representation."""
-        return f"<ProcurementDocument(id={self.id}, filename={self.original_filename}, status={self.status})>"
+        tender_ref = f", tender={self.tender.reference}" if self.tender else ""
+        return f"<ProcurementDocument(id={self.id}, filename={self.original_filename}, type={self.document_type}{tender_ref})>"
 
     @property
     def is_processed(self) -> bool:
@@ -146,4 +191,14 @@ class ProcurementDocument(BaseModel):
         """Get processing duration in seconds."""
         if self.processing_duration_ms:
             return self.processing_duration_ms / 1000.0
+        return None
+
+    @property
+    def document_type_enum(self) -> Optional[DocumentType]:
+        """Get document type as enum."""
+        if self.document_type:
+            try:
+                return DocumentType(self.document_type)
+            except ValueError:
+                return DocumentType.OTHER
         return None

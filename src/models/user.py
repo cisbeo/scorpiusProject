@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from src.models.audit import AuditLog
     from src.models.bid import BidResponse
     from src.models.document import ProcurementDocument
+    from src.models.procurement_tender import ProcurementTender
 
 
 class UserRole(str, Enum):
@@ -82,6 +83,26 @@ class User(BaseModel):
         "AuditLog",
         back_populates="user",
         cascade="all, delete-orphan",
+        lazy="select",
+    )
+
+    tenders: Mapped[list["ProcurementTender"]] = relationship(
+        "ProcurementTender",
+        back_populates="creator",
+        lazy="select",
+    )
+
+    bid_responses_created: Mapped[list["BidResponse"]] = relationship(
+        "BidResponse",
+        foreign_keys="BidResponse.created_by",
+        back_populates="creator",
+        lazy="select",
+    )
+
+    bid_responses_reviewed: Mapped[list["BidResponse"]] = relationship(
+        "BidResponse",
+        foreign_keys="BidResponse.reviewed_by",
+        back_populates="reviewer",
         lazy="select",
     )
 

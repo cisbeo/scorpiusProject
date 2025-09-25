@@ -184,3 +184,6 @@ class DatabaseSessionManager:
 
 # Global session manager instance
 db_manager = DatabaseSessionManager()
+
+# Alias for FastAPI dependency injection
+get_db = get_async_db
