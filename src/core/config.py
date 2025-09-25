@@ -30,8 +30,8 @@ class Settings(BaseSettings):
 
     # Database Configuration
     database_url: str = Field(
-        default="postgresql://scorpius:scorpius@localhost:5432/scorpius_mvp",
-        description="Database connection URL (PostgreSQL for production, SQLite for testing)",
+        default="postgresql+asyncpg://scorpius:scorpiusdev@localhost:5434/scorpius_dev",
+        description="Database connection URL (PostgreSQL)",
     )
     database_pool_size: int = Field(default=20, description="Database connection pool size")
     database_max_overflow: int = Field(

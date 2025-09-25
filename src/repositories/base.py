@@ -1,6 +1,6 @@
 """Base repository with generic CRUD operations."""
 
-from datetime import datetime
+from src.utils.datetime_utils import utc_now
 from typing import Any, Generic, Optional, TypeVar
 from uuid import UUID
 
@@ -153,7 +153,7 @@ class BaseRepository(Generic[ModelType]):
                 setattr(instance, field, value)
 
         # Force update of updated_at timestamp
-        instance.updated_at = datetime.utcnow()
+        instance.updated_at = utc_now()
 
         await self.db.commit()
         await self.db.refresh(instance)

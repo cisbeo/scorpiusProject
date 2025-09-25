@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from src.api.v1.endpoints import analysis, auth, company, documents, health, tenders, upload_async
+from src.api.v1.endpoints import analysis, auth, company, documents, health, tenders, upload_async, search
 
 # Create main v1 router
 api_router = APIRouter()
@@ -15,3 +15,4 @@ api_router.include_router(company.router)
 api_router.include_router(analysis.router)
 api_router.include_router(health.router)
 api_router.include_router(upload_async.router)
+api_router.include_router(search.router)

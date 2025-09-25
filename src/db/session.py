@@ -16,9 +16,9 @@ from src.core.config import get_settings
 
 settings = get_settings()
 
-# Determine if we're using SQLite for testing
+# Force PostgreSQL - never use SQLite
 database_url = settings.get_database_url(async_mode=False)
-is_sqlite = str(database_url).startswith("sqlite")
+is_sqlite = False  # Always use PostgreSQL, never SQLite
 
 # Configure engines based on database type
 if is_sqlite:

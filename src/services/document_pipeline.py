@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.processors import processor_factory
 from src.processors.pdf_processor import PDFProcessor
 from src.processors.unstructured_processor import UnstructuredProcessor
+# from src.services.llamaindex_service import LlamaIndexService  # Temporarily disabled - import issue
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -19,6 +20,13 @@ class DocumentPipelineService:
     def __init__(self, db: AsyncSession):
         """Initialize the pipeline service."""
         self.db = db
+        # Initialize LlamaIndex service for RAG capabilities
+        self.llamaindex_service = None
+        # try:
+        #     self.llamaindex_service = LlamaIndexService()
+        #     logger.info("LlamaIndex service initialized successfully")
+        # except Exception as e:
+        #     logger.warning(f"LlamaIndex service initialization failed: {e}. RAG features disabled.")
 
     async def process_document(
         self,
@@ -132,11 +140,27 @@ class DocumentPipelineService:
             if update_data.get('extraction_metadata'):
                 logger.debug(f"Extraction metadata saved: {update_data['extraction_metadata']}")
 
+            # Index the document with LlamaIndex if successful
+            if result.success and self.llamaindex_service:
+                try:
+                    logger.info(f"Indexing document {document_id} with LlamaIndex")
+                    index_result = self.llamaindex_service.index_from_processing_result(
+                        document_id=str(document_id),
+                        processing_result=result
+                    )
+                    if index_result.get("success"):
+                        logger.info(f"Document {document_id} indexed successfully: {index_result.get('num_chunks')} chunks created")
+                    else:
+                        logger.error(f"Failed to index document {document_id}: {index_result.get('error')}")
+                except Exception as e:
+                    logger.error(f"Error indexing document {document_id} with LlamaIndex: {e}", exc_info=True)
+
         return_data = {
             "success": result.success,
             "processor": result.processor_name,
             "processing_time_ms": result.processing_time_ms,
-            "metadata": result.metadata
+            "metadata": result.metadata,
+            "indexed": result.success and self.llamaindex_service is not None
         }
 
         logger.info(f"Pipeline processing completed for document {document_id}")

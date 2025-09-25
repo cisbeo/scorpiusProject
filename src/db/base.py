@@ -1,6 +1,6 @@
 """Base configuration for SQLAlchemy models."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
@@ -88,7 +88,7 @@ class BaseModel(Base):
 
     def soft_delete(self) -> None:
         """Mark record as deleted."""
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
 
     def restore(self) -> None:
         """Restore soft deleted record."""
