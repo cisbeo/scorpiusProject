@@ -4,8 +4,12 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 from uuid import UUID
 
-import jwt
-from jwt.exceptions import DecodeError, ExpiredSignatureError, InvalidTokenError
+from jose import jwt
+from jose.exceptions import JWTError, ExpiredSignatureError, JWTClaimsError
+
+# Map jose exceptions to expected names
+InvalidTokenError = JWTError
+DecodeError = JWTClaimsError
 
 from src.core.config import get_settings
 
