@@ -111,6 +111,10 @@ def create_application() -> FastAPI:
             {
                 "name": "Health",
                 "description": "System health monitoring"
+            },
+            {
+                "name": "Search",
+                "description": "Vector search and RAG capabilities"
             }
         ]
     )

@@ -59,10 +59,10 @@ async def upload_document_async(
 
     # Generate file path for storage
     import hashlib
-    from datetime import datetime
+    from src.utils.datetime_utils import utc_now
 
     # Generate unique file path
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
     file_hash = hashlib.md5(file_content).hexdigest()[:8]
     file_path = f"uploads/{timestamp}_{file_hash}_{file.filename}"
 
@@ -88,7 +88,8 @@ async def upload_document_async(
         async for bg_db in get_db():
             try:
                 # Create new service instances with the background session
-                bg_pipeline_service = DocumentPipelineService(bg_db)
+                from src.services.document_rag_integration import DocumentRAGIntegration
+                bg_rag_integration = DocumentRAGIntegration(bg_db)
                 bg_doc_repo = DocumentRepository(bg_db)
 
                 # Determine processor to use
@@ -114,15 +115,15 @@ async def upload_document_async(
                     "processor": use_processor
                 }
 
-                # Use the pipeline service to process
-                logger.info(f"Starting background processing for document {document.id}")
-                result = await bg_pipeline_service.process_document(
+                # Use the integrated RAG service to process and index
+                logger.info(f"Starting background processing and indexing for document {document.id}")
+                result = await bg_rag_integration.process_and_index_document(
                     file_content=file_content,
                     filename=file.filename,
                     document_id=document.id,
                     processing_options=processing_options
                 )
-                logger.info(f"Background processing completed: success={result.get('success')}")
+                logger.info(f"Background processing and indexing completed: success={result.get('success')}")
             except Exception as e:
                 logger.error(f"Error processing document {document.id}: {str(e)}", exc_info=True)
                 # Update document with error
@@ -164,18 +165,21 @@ async def get_document_status(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
+    # Get status as string
+    status_str = document.status if isinstance(document.status, str) else document.status.value
+
     response = {
         "id": str(document.id),
         "filename": document.original_filename,
-        "status": document.status.value,
+        "status": status_str,
         "created_at": document.created_at.isoformat(),
     }
 
-    if document.status == DocumentStatus.PROCESSED:
+    if status_str == "processed":
         response["processing_duration_ms"] = document.processing_duration_ms
         response["page_count"] = document.page_count if hasattr(document, 'page_count') else None
         response["extraction_metadata"] = document.extraction_metadata
-    elif document.status == DocumentStatus.FAILED:
+    elif status_str == "failed":
         response["error_message"] = document.error_message
 
     return response

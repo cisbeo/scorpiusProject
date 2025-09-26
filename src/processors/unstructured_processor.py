@@ -34,15 +34,9 @@ class UnstructuredProcessor(DocumentProcessor):
 
     def _check_unstructured(self) -> bool:
         """Check if Unstructured library is available."""
-        try:
-            # Try basic import first
-            import unstructured
-            # Check if we can use the basic auto partitioner instead
-            from unstructured.partition.auto import partition
-            return True
-        except ImportError:
-            print("Warning: Unstructured not installed. Install with: pip install 'unstructured[pdf]'")
-            return False
+        # Temporarily disable Unstructured to force PyPDF2 fallback
+        # TODO: Fix torch dependency issue with Unstructured
+        return False
 
     async def process_document(
         self,
@@ -211,19 +205,40 @@ class UnstructuredProcessor(DocumentProcessor):
         Returns:
             List of extracted elements
         """
-        from unstructured.partition.auto import partition
+        try:
+            # Try to use partition for PDF files
+            if file_path.lower().endswith('.pdf'):
+                # Use PDF-specific partition that doesn't need torch
+                from unstructured.partition.pdf import partition_pdf
+                elements = partition_pdf(
+                    filename=file_path,
+                    include_page_breaks=True,
+                    include_metadata=True,
+                    extract_images_in_pdf=False,  # Disable image extraction to avoid torch
+                    strategy='fast'  # Use fast strategy to avoid OCR/torch
+                )
+            elif file_path.lower().endswith('.docx'):
+                from unstructured.partition.docx import partition_docx
+                elements = partition_docx(
+                    filename=file_path,
+                    include_page_breaks=True,
+                    include_metadata=True
+                )
+            else:
+                # Fallback to text partition
+                from unstructured.partition.text import partition_text
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    text = f.read()
+                elements = partition_text(
+                    text=text,
+                    include_metadata=True
+                )
 
-        # Configure extraction - partition auto-detects file type
-        # Use 'auto' strategy which is faster than 'hi_res' but still good quality
-        elements = partition(
-            filename=file_path,
-            strategy='auto' if strategy == 'fast' else strategy,  # Use auto for fast mode
-            languages=languages,
-            include_page_breaks=True,
-            include_metadata=True
-        )
-
-        return elements
+            return elements
+        except Exception as e:
+            # If Unstructured fails, return empty list to trigger fallback
+            print(f"Unstructured extraction failed: {e}")
+            raise
 
     def _process_elements(self, elements: List[Any]) -> Dict[str, Any]:
         """
