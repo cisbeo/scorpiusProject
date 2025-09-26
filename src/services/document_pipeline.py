@@ -160,6 +160,8 @@ class DocumentPipelineService:
             "processor": result.processor_name,
             "processing_time_ms": result.processing_time_ms,
             "metadata": result.metadata,
+            "raw_text": result.raw_text,
+            "structured_content": result.structured_content,
             "indexed": result.success and self.llamaindex_service is not None
         }
 

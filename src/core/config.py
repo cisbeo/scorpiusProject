@@ -196,9 +196,22 @@ class Settings(BaseSettings):
             Database connection URL
         """
         url = str(self.database_url)
-        if async_mode and url.startswith("postgresql://"):
-            return url.replace("postgresql://", "postgresql+asyncpg://")
-        return url
+
+        # Handle conversion between sync and async URLs
+        if async_mode:
+            # Convert to async URL if needed
+            if url.startswith("postgresql://"):
+                return url.replace("postgresql://", "postgresql+asyncpg://")
+            elif url.startswith("postgresql+psycopg2://"):
+                return url.replace("postgresql+psycopg2://", "postgresql+asyncpg://")
+            return url
+        else:
+            # Convert to sync URL if needed
+            if url.startswith("postgresql+asyncpg://"):
+                return url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+            elif url.startswith("postgresql://"):
+                return url.replace("postgresql://", "postgresql+psycopg2://")
+            return url
 
     def get_redis_url(self) -> str:
         """Get Redis connection URL as string."""
@@ -214,3 +227,7 @@ def get_settings() -> Settings:
         Settings instance
     """
     return Settings()
+
+
+# Global settings instance
+settings = get_settings()

@@ -17,26 +17,28 @@ from src.core.config import get_settings
 settings = get_settings()
 
 # Force PostgreSQL - never use SQLite
-database_url = settings.get_database_url(async_mode=False)
+# Get separate URLs for sync and async engines
+sync_database_url = settings.get_database_url(async_mode=False)
+async_database_url = settings.get_database_url(async_mode=True)
 is_sqlite = False  # Always use PostgreSQL, never SQLite
 
 # Configure engines based on database type
 if is_sqlite:
     # SQLite configuration (for testing)
     sync_engine = create_engine(
-        database_url,
+        sync_database_url,
         poolclass=NullPool,
         echo=settings.debug,
     )
     async_engine = create_async_engine(
-        settings.get_database_url(async_mode=True),
+        async_database_url,
         poolclass=NullPool,
         echo=settings.debug,
     )
 else:
     # PostgreSQL configuration (for production)
     sync_engine = create_engine(
-        database_url,
+        sync_database_url,
         poolclass=QueuePool,
         pool_size=settings.database_pool_size,
         max_overflow=settings.database_max_overflow,
@@ -44,7 +46,7 @@ else:
         echo=settings.debug,
     )
     async_engine = create_async_engine(
-        settings.get_database_url(async_mode=True),
+        async_database_url,
         poolclass=NullPool,
         echo=settings.debug,
     )

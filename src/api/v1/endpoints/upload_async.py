@@ -88,7 +88,8 @@ async def upload_document_async(
         async for bg_db in get_db():
             try:
                 # Create new service instances with the background session
-                bg_pipeline_service = DocumentPipelineService(bg_db)
+                from src.services.document_rag_integration import DocumentRAGIntegration
+                bg_rag_integration = DocumentRAGIntegration(bg_db)
                 bg_doc_repo = DocumentRepository(bg_db)
 
                 # Determine processor to use
@@ -114,15 +115,15 @@ async def upload_document_async(
                     "processor": use_processor
                 }
 
-                # Use the pipeline service to process
-                logger.info(f"Starting background processing for document {document.id}")
-                result = await bg_pipeline_service.process_document(
+                # Use the integrated RAG service to process and index
+                logger.info(f"Starting background processing and indexing for document {document.id}")
+                result = await bg_rag_integration.process_and_index_document(
                     file_content=file_content,
                     filename=file.filename,
                     document_id=document.id,
                     processing_options=processing_options
                 )
-                logger.info(f"Background processing completed: success={result.get('success')}")
+                logger.info(f"Background processing and indexing completed: success={result.get('success')}")
             except Exception as e:
                 logger.error(f"Error processing document {document.id}: {str(e)}", exc_info=True)
                 # Update document with error

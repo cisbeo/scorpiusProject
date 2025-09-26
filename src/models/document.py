@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from src.models.procurement_tender import ProcurementTender
     from src.models.requirements import ExtractedRequirements
     from src.models.user import User
+    from src.models.document_embedding import DocumentEmbedding
 
 
 class DocumentStatus(str, Enum):
@@ -169,6 +170,14 @@ class ProcurementDocument(BaseModel):
         cascade="all, delete-orphan",
         lazy="select",
         order_by="ProcessingEvent.created_at",
+    )
+
+    embeddings: Mapped[list["DocumentEmbedding"]] = relationship(
+        "DocumentEmbedding",
+        back_populates="document",
+        cascade="all, delete-orphan",
+        lazy="select",
+        order_by="DocumentEmbedding.chunk_index",
     )
 
     def __repr__(self) -> str:
