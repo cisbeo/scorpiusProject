@@ -6,7 +6,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 
 from src.models.procurement_tender import ProcurementTender, TenderStatus
 from src.repositories.base import BaseRepository
@@ -164,8 +164,13 @@ class TenderRepository(BaseRepository[ProcurementTender]):
         Returns:
             Tender with documents if found, None otherwise
         """
+        # Import here to avoid circular imports
+        from src.models.document import ProcurementDocument
+
         query = select(ProcurementTender).options(
-            selectinload(ProcurementTender.documents)
+            joinedload(ProcurementTender.documents).joinedload(
+                ProcurementDocument.extracted_requirements
+            )
         ).where(ProcurementTender.id == tender_id)
 
         # Apply tenant isolation
@@ -176,7 +181,7 @@ class TenderRepository(BaseRepository[ProcurementTender]):
         query = query.where(ProcurementTender.deleted_at.is_(None))
 
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def get_expiring_soon(
         self,
@@ -378,10 +383,10 @@ class TenderRepository(BaseRepository[ProcurementTender]):
         from src.models.document import ProcurementDocument
 
         query = select(ProcurementTender).options(
-            selectinload(ProcurementTender.documents).selectinload(
+            joinedload(ProcurementTender.documents).joinedload(
                 ProcurementDocument.extracted_requirements
             ),
-            selectinload(ProcurementTender.documents).selectinload(
+            joinedload(ProcurementTender.documents).joinedload(
                 ProcurementDocument.processing_events
             )
         ).where(ProcurementTender.id == tender_id)
@@ -394,7 +399,7 @@ class TenderRepository(BaseRepository[ProcurementTender]):
         query = query.where(ProcurementTender.deleted_at.is_(None))
 
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def search_tenders(
         self,

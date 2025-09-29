@@ -6,7 +6,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 
 from src.models.bid import BidResponse, ResponseStatus, ResponseType
 from src.repositories.base import BaseRepository
@@ -463,12 +463,12 @@ class BidRepository(BaseRepository[BidResponse]):
             Bid response with relationships if found, None otherwise
         """
         query = select(BidResponse).options(
-            selectinload(BidResponse.procurement_document),
-            selectinload(BidResponse.company_profile),
-            selectinload(BidResponse.capability_match),
-            selectinload(BidResponse.creator),
-            selectinload(BidResponse.reviewer),
-            selectinload(BidResponse.compliance_checks)
+            joinedload(BidResponse.procurement_document),
+            joinedload(BidResponse.company_profile),
+            joinedload(BidResponse.capability_match),
+            joinedload(BidResponse.creator),
+            joinedload(BidResponse.reviewer),
+            joinedload(BidResponse.compliance_checks)
         ).where(BidResponse.id == bid_response_id)
 
         # Apply tenant isolation
@@ -479,7 +479,7 @@ class BidRepository(BaseRepository[BidResponse]):
         query = query.where(BidResponse.deleted_at.is_(None))
 
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def count_by_status(
         self,

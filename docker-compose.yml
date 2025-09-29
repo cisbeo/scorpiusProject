@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -9,11 +7,13 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://scorpius:scorpius@db:5432/scorpius_mvp
+      - DATABASE_URL=postgresql+asyncpg://scorpius:scorpius@db:5432/scorpius_mvp
       - REDIS_URL=redis://redis:6379/0
       - APP_ENV=development
     volumes:
       - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ./Examples:/app/Examples
       - ./uploads:/app/uploads
       - ./logs:/app/logs
     depends_on:
@@ -26,22 +26,23 @@ services:
     restart: unless-stopped
 
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: scorpius-db
     environment:
       - POSTGRES_USER=scorpius
       - POSTGRES_PASSWORD=scorpius
       - POSTGRES_DB=scorpius_mvp
+      - POSTGRES_HOST_AUTH_METHOD=md5
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./scripts:/docker-entrypoint-initdb.d/
     ports:
       - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U scorpius -d scorpius_mvp"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - scorpius-network
     restart: unless-stopped

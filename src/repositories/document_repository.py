@@ -6,7 +6,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 
 from src.models.document import DocumentStatus, ProcurementDocument
 from src.models.document_type import DocumentType
@@ -346,7 +346,7 @@ class DocumentRepository(BaseRepository[ProcurementDocument]):
             Document with requirements if found, None otherwise
         """
         query = select(ProcurementDocument).options(
-            selectinload(ProcurementDocument.extracted_requirements)
+            joinedload(ProcurementDocument.extracted_requirements)
         ).where(ProcurementDocument.id == document_id)
 
         # Apply tenant isolation
@@ -357,7 +357,7 @@ class DocumentRepository(BaseRepository[ProcurementDocument]):
         query = query.where(ProcurementDocument.deleted_at.is_(None))
 
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def count_by_status(
         self,

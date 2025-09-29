@@ -2,7 +2,7 @@
 
 import json
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 
@@ -115,7 +115,7 @@ class TenderAnalysisService:
             # Step 5: Create final consolidated analysis
             global_analysis = {
                 "tender_id": str(tender_id),
-                "analysis_timestamp": datetime.utcnow().isoformat(),
+                "analysis_timestamp": datetime.now(timezone.utc).isoformat(),
                 "document_count": len(tender.documents),
                 "completeness_score": completeness["completeness_score"],
                 "document_analyses": document_analyses,
@@ -268,7 +268,7 @@ class TenderAnalysisService:
             "filename": document.original_filename,
             "requirements": requirements_json,
             "evaluation_criteria": evaluation_criteria,
-            "extracted_at": datetime.utcnow().isoformat(),
+            "extracted_at": datetime.now(timezone.utc).isoformat(),
             "ai_metadata": extracted_data.get("metadata", {}),
             "reused_existing": False
         }
@@ -344,6 +344,25 @@ class TenderAnalysisService:
                     "source_text": "Le candidat devra présenter au minimum 3 références..."
                 }
             ]
+        elif doc_type == DocumentType.CCAP:
+            simulated_requirements = [
+                {
+                    "category": "administrative",
+                    "description": "Conditions de paiement à 30 jours",
+                    "importance": "medium",
+                    "is_mandatory": True,
+                    "confidence": 0.90,
+                    "source_text": "Le paiement sera effectué dans un délai de 30 jours..."
+                },
+                {
+                    "category": "financial",
+                    "description": "Pénalités de retard applicables",
+                    "importance": "high",
+                    "is_mandatory": False,
+                    "confidence": 0.85,
+                    "source_text": "Des pénalités seront appliquées en cas de retard..."
+                }
+            ]
 
         return {
             "requirements": simulated_requirements,
@@ -396,9 +415,22 @@ class TenderAnalysisService:
         all_requirements = []
         for doc_id, analysis in document_analyses.items():
             if "requirements" in analysis:
-                for req in analysis["requirements"]:
-                    req["source_document"] = doc_id
-                    all_requirements.append(req)
+                requirements = analysis["requirements"]
+                # Handle both dict of categories and flat list
+                if isinstance(requirements, dict):
+                    # Requirements organized by category
+                    for category, req_list in requirements.items():
+                        if isinstance(req_list, list):
+                            for req in req_list:
+                                if isinstance(req, dict):
+                                    req["source_document"] = doc_id
+                                    all_requirements.append(req)
+                elif isinstance(requirements, list):
+                    # Flat list of requirements
+                    for req in requirements:
+                        if isinstance(req, dict):
+                            req["source_document"] = doc_id
+                            all_requirements.append(req)
 
         # Find similar requirements across documents
         for i, req1 in enumerate(all_requirements):
@@ -459,6 +491,11 @@ class TenderAnalysisService:
         Returns:
             Consolidated global requirements
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Starting consolidation for tender {tender_id}")
+        logger.info(f"Document analyses: {list(document_analyses.keys())}")
+
         consolidated = {
             "categories": {},
             "mandatory_requirements": [],
@@ -478,27 +515,72 @@ class TenderAnalysisService:
             if "requirements" not in analysis or analysis.get("analysis_failed"):
                 continue
 
-            for req in analysis["requirements"]:
-                category = req.get("category", "general")
-                importance = req.get("importance", "medium")
-                is_mandatory = req.get("is_mandatory", False)
+            # Handle requirements as dict of categories with lists
+            requirements = analysis.get("requirements", {})
+            if not requirements:
+                logger.info(f"No requirements for doc {doc_id}")
+                continue
 
-                # Add to category grouping
-                if category not in consolidated["categories"]:
-                    consolidated["categories"][category] = []
-                consolidated["categories"][category].append(req)
+            logger.info(f"Processing doc {doc_id}, requirements type: {type(requirements)}")
 
-                # Add to priority grouping
-                if importance in consolidated["requirements_by_priority"]:
-                    consolidated["requirements_by_priority"][importance].append(req)
+            if isinstance(requirements, dict):
+                # Requirements are grouped by category
+                for category, req_list in requirements.items():
+                    logger.info(f"Category {category}, req_list type: {type(req_list)}")
+                    if not isinstance(req_list, list):
+                        continue
+                    for req in req_list:
+                        if isinstance(req, dict):
+                            req_category = req.get("category", category)
+                            importance = req.get("importance", "medium")
+                            is_mandatory = req.get("is_mandatory", False)
+                            req_obj = req
+                        else:
+                            # Simple string requirement
+                            req_category = category
+                            importance = "medium"
+                            is_mandatory = False
+                            req_obj = {"description": str(req), "category": req_category}
 
-                # Add to mandatory/optional lists
-                if is_mandatory:
-                    consolidated["mandatory_requirements"].append(req)
-                else:
-                    consolidated["optional_requirements"].append(req)
+                        # Add to category grouping
+                        if req_category not in consolidated["categories"]:
+                            consolidated["categories"][req_category] = []
+                        consolidated["categories"][req_category].append(req_obj)
 
-                consolidated["total_requirements"] += 1
+                        # Add to priority grouping
+                        if importance in consolidated["requirements_by_priority"]:
+                            consolidated["requirements_by_priority"][importance].append(req_obj)
+
+                        # Add to mandatory/optional lists
+                        if is_mandatory:
+                            consolidated["mandatory_requirements"].append(req_obj)
+                        else:
+                            consolidated["optional_requirements"].append(req_obj)
+
+                        consolidated["total_requirements"] += 1
+            else:
+                # Requirements as flat list (fallback)
+                for req in requirements if isinstance(requirements, list) else []:
+                    category = req.get("category", "general")
+                    importance = req.get("importance", "medium")
+                    is_mandatory = req.get("is_mandatory", False)
+
+                    # Add to category grouping
+                    if category not in consolidated["categories"]:
+                        consolidated["categories"][category] = []
+                    consolidated["categories"][category].append(req)
+
+                    # Add to priority grouping
+                    if importance in consolidated["requirements_by_priority"]:
+                        consolidated["requirements_by_priority"][importance].append(req)
+
+                    # Add to mandatory/optional lists
+                    if is_mandatory:
+                        consolidated["mandatory_requirements"].append(req)
+                    else:
+                        consolidated["optional_requirements"].append(req)
+
+                    consolidated["total_requirements"] += 1
 
         # Analyze coverage by document type
         doc_type_coverage = {}
@@ -713,7 +795,7 @@ class TenderAnalysisService:
 
         # Deadline risk
         if tender.deadline_date:
-            days_to_deadline = (tender.deadline_date - datetime.utcnow()).days
+            days_to_deadline = (tender.deadline_date - datetime.now(timezone.utc)).days
             if days_to_deadline < 7:
                 risks["risk_factors"].append({
                     "type": "timeline",
@@ -770,8 +852,12 @@ class TenderAnalysisService:
         }
 
         # Market opportunity analysis
-        category_distribution = global_requirements["coverage_analysis"]["category_distribution"]
-        dominant_category = max(category_distribution.items(), key=lambda x: x[1])[0]
+        category_distribution = global_requirements["coverage_analysis"].get("category_distribution", {})
+        dominant_category = (
+            max(category_distribution.items(), key=lambda x: x[1])[0]
+            if category_distribution
+            else "general"
+        )
 
         insights["market_opportunity"] = {
             "primary_domain": dominant_category,

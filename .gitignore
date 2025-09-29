@@ -90,3 +90,6 @@ Thumbs.db
 *.backup
 *.tmp
 *~
+
+# Test reports
+endpoint_test_report_*.json
