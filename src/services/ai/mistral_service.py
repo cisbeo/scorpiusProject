@@ -92,7 +92,7 @@ class MistralAIService:
             if ai_config.enable_query_cache:
                 try:
                     redis_client = redis.from_url(
-                        "redis://localhost:6379",
+                        "redis://redis:6379",
                         encoding="utf-8",
                         decode_responses=False  # Need binary for pickle
                     )

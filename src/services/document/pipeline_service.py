@@ -6,7 +6,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.document import ProcurementDocument
+from src.models.document import ProcurementDocument, DocumentStatus
 from src.processors import ProcessingError, ProcessingResult, processor_factory
 from src.repositories.audit_repository import AuditRepository
 from src.repositories.document_repository import DocumentRepository
@@ -162,12 +162,32 @@ class DocumentPipelineService:
             if processing_result.success and processing_result.structured_content:
                 await self._store_extracted_requirements(document, processing_result)
 
-            # Step 7: Update document status
+            # Step 7: Update document status with extraction metadata
             processing_duration = int((datetime.utcnow() - processing_start).total_seconds() * 1000)
 
             if processing_result.success:
-                await self.document_repo.complete_processing(
-                    document.id, processing_duration, tenant_id
+                # Store extraction metadata including text content for AI processing
+                extraction_metadata = {
+                    "processor": processing_result.processor_name,
+                    "processor_version": processing_result.processor_version,
+                    "text_content": processing_result.raw_text,  # Critical for AI extraction
+                    "page_count": processing_result.page_count,
+                    "word_count": processing_result.word_count,
+                    "language": processing_result.language,
+                    "confidence_score": processing_result.confidence_score,
+                    **processing_result.metadata
+                }
+
+                # Update document with status and metadata
+                await self.document_repo.update(
+                    document.id,
+                    {
+                        "status": DocumentStatus.PROCESSED,
+                        "processing_duration_ms": processing_duration,
+                        "extraction_metadata": extraction_metadata,
+                        "processed_content": processing_result.raw_text  # Store for AI extraction
+                    },
+                    tenant_id=tenant_id
                 )
                 status = "completed"
             else:

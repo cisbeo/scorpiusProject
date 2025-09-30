@@ -115,6 +115,13 @@ class ProcurementDocument(BaseModel):
         comment="Whether this document type is mandatory for the tender",
     )
 
+    # Processed content for embeddings
+    processed_content: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Processed text content for embeddings",
+    )
+
     # Cross-references and metadata
     cross_references: Mapped[Optional[dict]] = mapped_column(
         JSON,
@@ -126,6 +133,12 @@ class ProcurementDocument(BaseModel):
         JSON,
         nullable=True,
         comment="Extracted metadata specific to document type",
+    )
+
+    document_metadata: Mapped[Optional[dict]] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="General metadata for the document",
     )
 
     # Foreign keys

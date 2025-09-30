@@ -14,6 +14,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore"  # Ignorer les champs supplémentaires dans .env
     )
 
     # Application Settings
@@ -137,6 +138,23 @@ class Settings(BaseSettings):
     smtp_from: str = Field(
         default="noreply@scorpiusproject.fr", description="Default from email"
     )
+
+    # Mistral AI Configuration
+    mistral_api_key: Optional[str] = Field(default=None, description="Mistral AI API key")
+    enable_ai_extraction: bool = Field(default=False, description="Enable AI extraction")
+    llm_model: str = Field(default="mistral-large-latest", description="LLM model to use")
+    embedding_model: str = Field(default="mistral-embed", description="Embedding model")
+
+    # AI Extraction Settings
+    ai_extraction_cache_ttl: int = Field(default=604800, description="Cache TTL in seconds (7 days)")
+    ai_extraction_max_tokens: int = Field(default=4000, description="Max tokens for extraction")
+    ai_extraction_temperature: float = Field(default=0.1, description="Temperature for extraction")
+    ai_extraction_timeout: int = Field(default=30, description="Timeout for AI extraction")
+
+    # Performance Limits
+    max_document_size_for_ai: int = Field(default=50000, description="Max document size for AI")
+    max_requirements_per_document: int = Field(default=100, description="Max requirements per doc")
+    min_confidence_threshold: float = Field(default=0.3, description="Min confidence threshold")
 
     @field_validator("log_level")
     @classmethod

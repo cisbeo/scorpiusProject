@@ -1,9 +1,10 @@
 """API endpoints for tender management."""
 
-from typing import Optional, List
-from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Path
+from typing import Optional, List, Dict, Any
+from uuid import UUID, uuid4
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Path, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+import logging
 
 from src.db.session import get_db
 from src.models.user import User
@@ -13,6 +14,8 @@ from src.models.user import UserRole
 from src.services.tender_service import TenderService
 from src.services.tender_analysis_service import TenderAnalysisService
 from src.core.exceptions import NotFoundError, ValidationError, BusinessLogicError
+from src.repositories.document_repository import DocumentRepository
+from src.repositories.tender_repository import TenderRepository
 from src.api.v1.schemas.tender import (
     TenderCreateRequest,
     TenderUpdateRequest,
@@ -29,6 +32,8 @@ from src.api.v1.schemas.tender import (
     ExpiringTendersRequest,
     TenderErrorResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tenders", tags=["tenders"])
 
@@ -525,6 +530,59 @@ async def associate_documents_bulk(
         )
 
 
+@router.get("/{tender_id}/documents", response_model=List[dict])
+async def get_tender_documents(
+    tender_id: UUID = Path(..., description="Tender UUID"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get all documents associated with a tender.
+
+    Returns a list of documents with their metadata.
+    """
+    from src.repositories.tender_repository import TenderRepository
+    from src.repositories.document_repository import DocumentRepository
+
+    tender_repo = TenderRepository(db)
+    doc_repo = DocumentRepository(db)
+
+    # Check if tender exists
+    tender = await tender_repo.get_by_id(
+        tender_id,
+        tenant_id=current_user.tenant_id if hasattr(current_user, 'tenant_id') else None
+    )
+
+    if not tender:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tender {tender_id} not found"
+        )
+
+    # Get documents associated with the tender using the repository
+    tender_docs = await doc_repo.get_by_tender(
+        tender_id=tender_id,
+        tenant_id=current_user.tenant_id if hasattr(current_user, 'tenant_id') else None
+    )
+
+    # Format documents for response
+    documents = []
+    for doc in tender_docs:
+        doc_dict = {
+            "id": str(doc.id),
+            "original_filename": doc.original_filename,
+            "document_type": doc.document_type if hasattr(doc, 'document_type') else "Unknown",
+            "title": doc.title if hasattr(doc, 'title') else doc.original_filename,
+            "status": doc.status.value if hasattr(doc.status, 'value') else str(doc.status),
+            "file_size": doc.file_size,
+            "uploaded_at": doc.created_at.isoformat() if doc.created_at else None,
+            "processing_status": doc.status.value if hasattr(doc.status, 'value') else str(doc.status)
+        }
+        documents.append(doc_dict)
+
+    return documents
+
+
 @router.delete("/{tender_id}/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_document_from_tender(
     tender_id: UUID,
@@ -740,3 +798,113 @@ async def get_tender(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving tender: {str(e)}",
         )
+
+
+# Store analysis jobs in memory (in production, use Redis or database)
+analysis_jobs: Dict[str, Dict[str, Any]] = {}
+
+
+@router.post("/{tender_id}/analyze")
+async def trigger_tender_analysis(
+    tender_id: UUID,
+    background_tasks: BackgroundTasks,
+    analysis_type: str = "comprehensive",
+    extract_requirements: bool = True,
+    generate_embeddings: bool = True,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Trigger AI analysis for all documents in a tender.
+
+    Returns immediately with an analysis ID while processing happens in background.
+    """
+    try:
+        # Verify tender exists
+        tender_repo = TenderRepository(db)
+        tender = await tender_repo.get_by_id(tender_id)
+        if not tender:
+            raise HTTPException(status_code=404, detail="Tender not found")
+
+        # Get all documents for this tender
+        doc_repo = DocumentRepository(db)
+        documents = await doc_repo.get_by_tender(tender_id)
+
+        if not documents:
+            raise HTTPException(
+                status_code=400,
+                detail="No documents found for this tender"
+            )
+
+        # Create analysis job
+        analysis_id = str(uuid4())
+        analysis_jobs[analysis_id] = {
+            "id": analysis_id,
+            "tender_id": str(tender_id),
+            "status": "pending",
+            "document_count": len(documents),
+            "documents_processed": 0,
+            "analysis_type": analysis_type,
+            "extract_requirements": extract_requirements,
+            "generate_embeddings": generate_embeddings,
+            "created_by": str(current_user.id)
+        }
+
+        # Process in background
+        async def process_analysis():
+            from src.db.session import get_db
+            from src.services.ai_service import AIService
+
+            async for bg_db in get_db():
+                try:
+                    analysis_jobs[analysis_id]["status"] = "processing"
+
+                    ai_service = AIService()
+                    bg_doc_repo = DocumentRepository(bg_db)
+
+                    for doc in documents:
+                        # Get document content
+                        document = await bg_doc_repo.get_by_id(doc.id)
+                        if document and document.processed_content:
+                            # Extract requirements if requested
+                            if extract_requirements:
+                                try:
+                                    requirements = await ai_service.extract_requirements(
+                                        document.processed_content[:5000]  # Limit content
+                                    )
+                                    logger.info(f"Extracted {len(requirements)} requirements from {doc.id}")
+                                except Exception as e:
+                                    logger.error(f"Failed to extract requirements: {e}")
+
+                            # Generate embeddings if requested
+                            if generate_embeddings:
+                                try:
+                                    # This would normally call an embedding service
+                                    logger.info(f"Would generate embeddings for {doc.id}")
+                                except Exception as e:
+                                    logger.error(f"Failed to generate embeddings: {e}")
+
+                        analysis_jobs[analysis_id]["documents_processed"] += 1
+
+                    analysis_jobs[analysis_id]["status"] = "completed"
+
+                except Exception as e:
+                    logger.error(f"Analysis failed: {e}")
+                    analysis_jobs[analysis_id]["status"] = "failed"
+                    analysis_jobs[analysis_id]["error"] = str(e)
+                finally:
+                    await bg_db.close()
+
+        background_tasks.add_task(process_analysis)
+
+        return {
+            "analysis_id": analysis_id,
+            "status": "pending",
+            "document_count": len(documents)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to trigger analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

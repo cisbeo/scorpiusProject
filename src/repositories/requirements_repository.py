@@ -3,18 +3,19 @@
 from typing import Optional, List
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.requirements import ExtractedRequirements
+from src.models.extracted_requirement import ExtractedRequirement
 from src.repositories.base import BaseRepository
 
 
-class RequirementsRepository(BaseRepository[ExtractedRequirements]):
-    """Repository for ExtractedRequirements model with requirements-specific operations."""
+class RequirementsRepository(BaseRepository[ExtractedRequirement]):
+    """Repository for ExtractedRequirement model with requirements-specific operations."""
 
     def __init__(self, db_session: AsyncSession):
         """Initialize requirements repository."""
-        super().__init__(ExtractedRequirements, db_session)
+        super().__init__(ExtractedRequirement, db_session)
 
     async def create_requirement(
         self,
@@ -26,7 +27,7 @@ class RequirementsRepository(BaseRepository[ExtractedRequirements]):
         extracted_text: str = "",
         confidence_score: float = 0.8,
         tenant_id: Optional[UUID] = None
-    ) -> ExtractedRequirements:
+    ) -> ExtractedRequirement:
         """
         Create a new extracted requirement.
 
@@ -58,7 +59,7 @@ class RequirementsRepository(BaseRepository[ExtractedRequirements]):
         self,
         document_id: UUID,
         tenant_id: Optional[UUID] = None
-    ) -> List[ExtractedRequirements]:
+    ) -> List[ExtractedRequirement]:
         """
         Get all requirements for a specific document.
 
@@ -80,7 +81,7 @@ class RequirementsRepository(BaseRepository[ExtractedRequirements]):
         skip: int = 0,
         limit: int = 100,
         tenant_id: Optional[UUID] = None
-    ) -> List[ExtractedRequirements]:
+    ) -> List[ExtractedRequirement]:
         """
         Get requirements by category.
 
@@ -99,3 +100,41 @@ class RequirementsRepository(BaseRepository[ExtractedRequirements]):
             category=category,
             tenant_id=tenant_id
         )
+
+    async def get_by_tender(
+        self,
+        tender_id: UUID,
+        category: Optional[str] = None,
+        is_mandatory: Optional[bool] = None,
+        tenant_id: Optional[UUID] = None
+    ) -> List[ExtractedRequirement]:
+        """
+        Get all requirements for a specific tender.
+
+        Args:
+            tender_id: UUID of the tender
+            category: Optional category filter
+            is_mandatory: Optional mandatory filter
+            tenant_id: Tenant ID for isolation
+
+        Returns:
+            List of requirements for the tender
+        """
+        query = select(ExtractedRequirement).where(
+            ExtractedRequirement.tender_id == tender_id
+        )
+
+        if tenant_id is not None:
+            query = query.where(ExtractedRequirement.tenant_id == tenant_id)
+
+        if category is not None:
+            query = query.where(ExtractedRequirement.category == category)
+
+        if is_mandatory is not None:
+            query = query.where(ExtractedRequirement.is_mandatory == is_mandatory)
+
+        # Filter out soft-deleted records
+        query = query.where(ExtractedRequirement.deleted_at.is_(None))
+
+        result = await self.db.execute(query)
+        return result.scalars().all()

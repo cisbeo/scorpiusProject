@@ -124,11 +124,17 @@ class DocumentPipelineService:
                 update_data["status"] = DocumentStatus.PROCESSED
                 update_data["processing_duration_ms"] = result.processing_time_ms
                 # Skip page_count for now as it's not in the model
-                update_data["extraction_metadata"] = {
+                extraction_metadata = {
                     "processor": result.processor_name,
                     "strategy": strategy,
+                    "text_content": result.raw_text,  # Store extracted text for AI processing
+                    "page_count": result.page_count,
+                    "language": result.language,
                     **result.metadata
                 }
+                update_data["extraction_metadata"] = extraction_metadata
+                update_data["processed_content"] = result.raw_text  # Store for AI extraction
+                logger.info(f"Saving extraction_metadata with text_content of length: {len(result.raw_text) if result.raw_text else 0}")
             else:
                 update_data["status"] = DocumentStatus.FAILED
                 update_data["error_message"] = " | ".join(result.errors)

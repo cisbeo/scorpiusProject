@@ -1,7 +1,7 @@
 # Core Web Framework
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
-pydantic==2.5.0
+pydantic>=2.10.3       # Updated for mistralai compatibility
 pydantic-settings==2.1.0
 
 # Database
@@ -20,30 +20,28 @@ email-validator==2.1.0            # Email validation
 # Document Processing
 PyPDF2==3.0.0          # PDF extraction (fallback)
 python-magic==0.4.27   # File type detection
-unstructured[pdf]==0.18.15  # Advanced document extraction
 pypdf==6.1.0           # PDF manipulation
 pdfplumber==0.11.7     # Table extraction from PDFs
 
-# NLP & Machine Learning
-spacy==3.7.0           # NLP framework
-scikit-learn==1.7.2    # Machine learning (TF-IDF, etc.)
-sentence-transformers==5.1.1  # Semantic embeddings
-numpy<2                # Numerical computing (v1.x for compatibility)
-
-# RAG & Vector Search
-llama-index==0.9.48    # Document indexing and retrieval
-llama-index-embeddings-huggingface==0.1.0  # HuggingFace embeddings for LlamaIndex
-
 # Vector Database Support
-pgvector==0.4.1      # PostgreSQL vector extension
+pgvector==0.4.1        # PostgreSQL vector extension
 
 # Utilities
 python-dotenv==1.0.0   # Environment variables
 structlog==24.1.0      # Structured logging
-httpx==0.26.0          # HTTP client for testing
 tenacity==8.2.0        # Retry logic
 
-# Development & Testing (optional, can be in requirements-dev.txt)
+# AI/ML Libraries - Simplified for compatibility
+mistralai              # Mistral AI SDK for requirements extraction (let pip resolve version)
+httpx                  # HTTP client (let pip resolve compatible version)
+numpy<2                # Numerical computing
+scikit-learn>=1.3.0    # Machine learning
+
+# Development & Testing (optional)
 pytest==7.4.0
 pytest-asyncio==0.21.0
 pytest-cov==4.1.0
+# RAG Dependencies (added for implementation plan)
+# Note: pgvector already includes asyncpg support
+prometheus-client==0.19.0  # Metrics export
+pandas>=2.0.0  # Data analysis for dashboard

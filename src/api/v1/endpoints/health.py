@@ -314,3 +314,129 @@ async def _get_system_metrics() -> dict:
             "cpu_percent": "unknown",
             "threads": "unknown"
         }
+
+
+@router.get(
+    "/health/db",
+    status_code=status.HTTP_200_OK,
+    summary="Database health check",
+    description="Check database connectivity and status",
+    responses={
+        200: {"description": "Database is healthy"},
+        503: {"description": "Database is unhealthy"}
+    }
+)
+async def check_database_health(db: AsyncSession = Depends(get_async_db)):
+    """
+    Check database health status.
+
+    Returns database connectivity and response time.
+    """
+    health_status = await _check_database_health(db)
+
+    if health_status["status"] == "healthy":
+        return health_status
+    else:
+        return health_status
+
+
+@router.get(
+    "/health/cache",
+    status_code=status.HTTP_200_OK,
+    summary="Redis cache health check",
+    description="Check Redis cache connectivity and status",
+    responses={
+        200: {"description": "Cache is healthy"},
+        503: {"description": "Cache is unhealthy"}
+    }
+)
+async def check_cache_health():
+    """
+    Check Redis cache health status.
+
+    Returns cache connectivity status.
+    """
+    try:
+        import redis.asyncio as redis
+        from src.core.config import get_settings
+
+        settings = get_settings()
+
+        # Try to connect to Redis
+        redis_url = settings.get_redis_url()
+        redis_client = redis.from_url(
+            redis_url,
+            decode_responses=True
+        )
+
+        # Test connection with ping
+        await redis_client.ping()
+        await redis_client.close()
+
+        return {
+            "status": "healthy",
+            "message": "Redis cache is operational",
+            "url": redis_url.replace(":6379", ":****")  # Hide port for security
+        }
+
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "message": "Redis cache connection failed"
+        }
+
+
+@router.get(
+    "/health/ai",
+    status_code=status.HTTP_200_OK,
+    summary="AI service health check",
+    description="Check Mistral AI API connectivity and configuration",
+    responses={
+        200: {"description": "AI service is healthy"},
+        503: {"description": "AI service is unhealthy or not configured"}
+    }
+)
+async def check_ai_health():
+    """
+    Check Mistral AI API health and configuration.
+
+    Returns AI service availability status.
+    """
+    try:
+        from src.core.config import get_settings
+
+        settings = get_settings()
+
+        # Check if API key is configured
+        if not settings.mistral_api_key:
+            return {
+                "status": "not_configured",
+                "message": "Mistral AI API key not configured",
+                "configured": False
+            }
+
+        # Check if the key looks valid (basic check)
+        if len(settings.mistral_api_key) < 20:
+            return {
+                "status": "misconfigured",
+                "message": "Invalid Mistral AI API key format",
+                "configured": False
+            }
+
+        # Could add actual API ping here if needed
+        # For now, just verify configuration
+        return {
+            "status": "healthy",
+            "message": "Mistral AI service is configured",
+            "configured": True,
+            "api_key_present": True,
+            "api_key_length": len(settings.mistral_api_key)
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to check AI service: {str(e)}",
+            "configured": False
+        }

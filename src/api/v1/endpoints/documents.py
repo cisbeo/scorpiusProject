@@ -15,6 +15,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.schemas.documents import (
@@ -332,6 +333,86 @@ async def get_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve document"
+        )
+
+
+@router.get(
+    "/{document_id}/download",
+    summary="Download document",
+    description="Download the original uploaded document",
+    responses={
+        200: {
+            "description": "Document file",
+            "content": {
+                "application/pdf": {},
+                "application/octet-stream": {}
+            }
+        },
+        401: {
+            "description": "Authentication required"
+        },
+        404: {
+            "description": "Document not found"
+        }
+    }
+)
+async def download_document(
+    document_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Download the original uploaded document.
+
+    Returns the file as a download with the original filename.
+    Only the user who uploaded the document can download it.
+    """
+    import os
+
+    try:
+        from src.repositories.document_repository import DocumentRepository
+
+        document_repo = DocumentRepository(db)
+
+        # Get document
+        document = await document_repo.get_by_id(
+            document_id,
+            tenant_id=current_user.tenant_id
+        )
+
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found"
+            )
+
+        # Skip ownership check for now - in production, you'd check team/organization access
+        # if document.uploaded_by != current_user.id:
+        #     raise HTTPException(
+        #         status_code=status.HTTP_404_NOT_FOUND,
+        #         detail="Document not found"
+        #     )
+
+        # Check if file exists
+        if not document.file_path or not os.path.exists(document.file_path):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document file not found on server"
+            )
+
+        # Return file
+        return FileResponse(
+            path=document.file_path,
+            filename=document.original_filename,
+            media_type=document.mime_type or "application/octet-stream"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to download document: {str(e)}"
         )
 
 

@@ -1,6 +1,6 @@
 """Async upload endpoint with deferred processing."""
 
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 import asyncio
@@ -23,8 +23,10 @@ router = APIRouter()
 async def upload_document_async(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    processing_strategy: Optional[str] = "fast",
-    processor: Optional[str] = "auto",
+    processing_strategy: Optional[str] = Form("fast"),
+    processor: Optional[str] = Form("auto"),
+    tender_id: Optional[str] = Form(None),
+    document_type: Optional[str] = Form(None),
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
@@ -56,9 +58,11 @@ async def upload_document_async(
     # Save file and create document record
     file_content = await file.read()
     logger.info(f"File read successfully: size={len(file_content)} bytes ({len(file_content) / 1024:.1f} KB)")
+    logger.info(f"Received form data: tender_id={tender_id}, document_type={document_type}, processing_strategy={processing_strategy}, processor={processor}")
 
     # Generate file path for storage
     import hashlib
+    import os
     from src.utils.datetime_utils import utc_now
 
     # Generate unique file path
@@ -66,18 +70,42 @@ async def upload_document_async(
     file_hash = hashlib.md5(file_content).hexdigest()[:8]
     file_path = f"uploads/{timestamp}_{file_hash}_{file.filename}"
 
+    # Create uploads directory if it doesn't exist
+    os.makedirs("uploads", exist_ok=True)
+
+    # Save the file to disk
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    logger.info(f"File saved to disk at: {file_path}")
+
     # Create document with UPLOADED status
-    document = await doc_repo.create(
-        original_filename=file.filename,
-        file_path=file_path,
-        file_size=len(file_content),
-        file_hash=hashlib.sha256(file_content).hexdigest(),
-        mime_type=file.content_type,
-        status=DocumentStatus.UPLOADED,
-        uploaded_by=current_user.id if current_user else None
-    )
+    # Create document record
+    doc_data = {
+        "original_filename": file.filename,
+        "file_path": file_path,
+        "file_size": len(file_content),
+        "file_hash": hashlib.sha256(file_content).hexdigest(),
+        "mime_type": file.content_type,
+        "status": DocumentStatus.UPLOADED,
+        "uploaded_by": current_user.id if current_user else None
+    }
+
+    # Add tender association if provided
+    if tender_id:
+        # Convert string to UUID if needed
+        try:
+            tender_uuid = UUID(tender_id) if isinstance(tender_id, str) else tender_id
+            doc_data["tender_id"] = tender_uuid
+        except ValueError:
+            logger.error(f"Invalid tender_id format: {tender_id}")
+
+    # Add document type if provided
+    if document_type:
+        doc_data["document_type"] = document_type
+
+    document = await doc_repo.create(**doc_data)
     await db.commit()
-    logger.info(f"Document created in database: id={document.id}, path={file_path}")
+    logger.info(f"Document created in database: id={document.id}, path={file_path}, tender_id={tender_id}")
 
     # Process in background - using a separate DB session
     async def process_document_background():

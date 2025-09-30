@@ -10,6 +10,9 @@ services:
       - DATABASE_URL=postgresql+asyncpg://scorpius:scorpius@db:5432/scorpius_mvp
       - REDIS_URL=redis://redis:6379/0
       - APP_ENV=development
+      - MISTRAL_API_KEY=wc9AxYy7BZeC5fKxlcj7nR7VN3f2XFVA
+      - ENABLE_AI_EXTRACTION=true
+      - LOG_LEVEL=INFO
     volumes:
       - ./src:/app/src
       - ./scripts:/app/scripts
